@@ -61,6 +61,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _tab = 0;
   final _hubKey = GlobalKey<ImpactHubPageState>();
+  final _walletKey = GlobalKey<WalletPageState>();
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +69,8 @@ class _MainShellState extends State<MainShell> {
       const HomePage(),
       const CampaignsPage(),
       ImpactHubPage(key: _hubKey),
-      const AboutPage(),
+      const EventsPage(),
+      WalletPage(key: _walletKey),
     ];
     return Scaffold(
       body: SafeArea(child: IndexedStack(index: _tab, children: pages)),
@@ -77,12 +79,14 @@ class _MainShellState extends State<MainShell> {
         onDestinationSelected: (index) {
           setState(() => _tab = index);
           if (index == 2) _hubKey.currentState?.refresh();
+          if (index == 4) _walletKey.currentState?.refresh();
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.campaign_outlined), selectedIcon: Icon(Icons.campaign), label: 'Campaigns'),
-          NavigationDestination(icon: Icon(Icons.eco_outlined), selectedIcon: Icon(Icons.eco), label: 'Impact Hub'),
-          NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'About'),
+          NavigationDestination(icon: Icon(Icons.miscellaneous_services_outlined), selectedIcon: Icon(Icons.miscellaneous_services), label: 'Services'),
+          NavigationDestination(icon: Icon(Icons.eco_outlined), selectedIcon: Icon(Icons.eco), label: 'Go Green'),
+          NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
+          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'Wallet'),
         ],
       ),
     );
@@ -143,11 +147,433 @@ class CampaignsPage extends StatelessWidget {
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(20), children: [
         const _BrandHeader(),
         const SizedBox(height: 28),
-        const _SectionTitle('Campaigns & partnerships', 'Explore community priorities. Progress figures will be shown when organizers publish dated, sourced updates.'),
+        const _SectionTitle('Services & campaigns', 'Find practical ways to take part in environmental action and community programmes.'),
         const SizedBox(height: 16),
         for (final campaign in campaigns)
           _InfoCard(icon: campaign.$3, title: campaign.$1, text: campaign.$2),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AboutPage())),
+          icon: const Icon(Icons.info_outline),
+          label: const Text('About Go Green Mates'),
+        ),
       ]);
+}
+
+
+class EventsPage extends StatefulWidget {
+  const EventsPage({super.key});
+  @override
+  EventsPageState createState() => EventsPageState();
+}
+
+class EventsPageState extends State<EventsPage> {
+  int _tab = 0;
+  final List<_GreenTicket> _tickets = [];
+  final List<_GreenEvent> _events = [
+    _GreenEvent(
+      id: 'summit-2026',
+      title: 'Global Climate Summit 2026',
+      startsAt: DateTime(2026, 11, 15, 9),
+      place: 'Nairobi, Kenya',
+      available: 150,
+      price: 15,
+      points: 150,
+      description: 'Join community leaders, environmental experts and local organizers for a day of practical climate action, learning and collaboration.',
+    ),
+    _GreenEvent(
+      id: 'workshop-2026',
+      title: 'Sustainability Workshop',
+      startsAt: DateTime(2026, 10, 30, 14),
+      place: 'Online Event',
+      available: 80,
+      price: 0,
+      points: 50,
+      description: 'Learn simple, practical ways to make homes and communities more sustainable.',
+    ),
+    _GreenEvent(
+      id: 'tree-marathon-2026',
+      title: 'Tree Planting Marathon',
+      startsAt: DateTime(2026, 11, 28, 7),
+      place: 'Kampala, Uganda',
+      available: 120,
+      price: 5,
+      points: 100,
+      description: 'Take part in a community tree planting day and help care for young trees in the local area.',
+    ),
+  ];
+
+  void _showDetails(_GreenEvent event) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .88),
+          decoration: const BoxDecoration(
+            color: _cream,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Center(child: Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFCAD3CC), borderRadius: BorderRadius.circular(8)))),
+              const SizedBox(height: 22),
+              Text(event.title, style: const TextStyle(fontSize: 24, height: 1.12, color: _darkGreen, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 14),
+              _MetaLine(icon: Icons.access_time, text: '${MaterialLocalizations.of(context).formatMediumDate(event.startsAt)} · ${TimeOfDay.fromDateTime(event.startsAt).format(context)}'),
+              _MetaLine(icon: Icons.location_on_outlined, text: event.place),
+              _MetaLine(icon: Icons.confirmation_number_outlined, text: '${event.available} tickets available'),
+              const SizedBox(height: 22),
+              const Text('About this event', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _darkGreen)),
+              const SizedBox(height: 8),
+              Text(event.description, style: const TextStyle(color: Colors.black54, height: 1.5)),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+                child: Row(children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Ticket price', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const SizedBox(height: 4),
+                    Text(event.price == 0 ? 'Free' : '${event.price.toStringAsFixed(2)} cUSD', style: const TextStyle(color: _green, fontWeight: FontWeight.w900, fontSize: 20)),
+                  ])),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    const Text('Eco Points', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const SizedBox(height: 4),
+                    Text('+ ${event.points}', style: const TextStyle(color: _green, fontWeight: FontWeight.w900, fontSize: 18)),
+                  ]),
+                ]),
+              ),
+              const SizedBox(height: 10),
+              const Text('Ticket checkout is a screen preview; payment processing is not connected.', style: TextStyle(color: Colors.black54, fontSize: 11)),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    _reservePreviewTicket(event);
+                  },
+                  child: const Text('Purchase Ticket'),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _reservePreviewTicket(_GreenEvent event) {
+    if (_tickets.any((ticket) => ticket.event.id == event.id)) {
+      setState(() => _tab = 1);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This event is already in My Tickets.')));
+      return;
+    }
+    final reference = 'TICKET-2026-${(_tickets.length + 1).toString().padLeft(3, '0')}';
+    setState(() {
+      _tickets.insert(0, _GreenTicket(event: event, reference: reference));
+      _tab = 1;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preview ticket saved on this device. No payment was taken.')));
+  }
+
+  void _showTicket(_GreenTicket ticket) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Container(
+          decoration: const BoxDecoration(color: _cream, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(ticket.event.title, style: const TextStyle(fontSize: 23, height: 1.12, color: _darkGreen, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 18),
+            Center(child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+              child: Column(children: [
+                CustomPaint(size: const Size.square(180), painter: _QrPreviewPainter(ticket.reference)),
+                const SizedBox(height: 14),
+                Text(ticket.reference, style: const TextStyle(letterSpacing: 1.4, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                _MetaLine(icon: Icons.calendar_month_outlined, text: MaterialLocalizations.of(context).formatMediumDate(ticket.event.startsAt)),
+                _MetaLine(icon: Icons.location_on_outlined, text: ticket.event.place),
+              ]),
+            )),
+            const SizedBox(height: 14),
+            const Text('Preview ticket only. A verified ticket QR will require a ticketing service.', style: TextStyle(color: Colors.black54, fontSize: 11)),
+            const SizedBox(height: 16),
+            SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('Close'))),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleEvents = _events.where((event) => event.startsAt.isAfter(DateTime.now())).toList();
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+        child: Row(children: [
+          const Expanded(child: Text('Events & Tickets', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: _darkGreen))),
+          IconButton(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You are all caught up.'))), tooltip: 'Notifications', icon: const Icon(Icons.notifications_none)),
+          IconButton(onPressed: () => _openHub(context), tooltip: 'Account', icon: const Icon(Icons.person_outline)),
+        ]),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 0, label: Text('Upcoming')),
+            ButtonSegment(value: 1, label: Text('My Tickets')),
+          ],
+          selected: {_tab},
+          onSelectionChanged: (selection) => setState(() => _tab = selection.first),
+          showSelectedIcon: false,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Expanded(
+        child: _tab == 0
+            ? ListView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                children: [
+                  for (final event in visibleEvents) _EventListCard(event: event, onTap: () => _showDetails(event)),
+                  if (visibleEvents.isEmpty) const _InfoCard(icon: Icons.event_busy, title: 'No upcoming events', text: 'Check back when new community events are announced.'),
+                  const SizedBox(height: 8),
+                  const Text('Sample event listings for the screen preview.', style: TextStyle(color: Colors.black45, fontSize: 11)),
+                ],
+              )
+            : _tickets.isEmpty
+                ? ListView(padding: const EdgeInsets.fromLTRB(18, 24, 18, 24), children: const [
+                    _InfoCard(icon: Icons.confirmation_number_outlined, title: 'No tickets yet', text: 'Tickets you reserve will appear here.'),
+                  ])
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                    children: [
+                      for (final ticket in _tickets) _TicketListCard(ticket: ticket, onTap: () => _showTicket(ticket)),
+                    ],
+                  ),
+      ),
+    ]);
+  }
+}
+
+class _GreenEvent {
+  const _GreenEvent({
+    required this.id,
+    required this.title,
+    required this.startsAt,
+    required this.place,
+    required this.available,
+    required this.price,
+    required this.points,
+    required this.description,
+  });
+  final String id;
+  final String title;
+  final DateTime startsAt;
+  final String place;
+  final int available;
+  final double price;
+  final int points;
+  final String description;
+}
+
+class _GreenTicket {
+  const _GreenTicket({required this.event, required this.reference});
+  final _GreenEvent event;
+  final String reference;
+}
+
+class _EventListCard extends StatelessWidget {
+  const _EventListCard({required this.event, required this.onTap});
+  final _GreenEvent event;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(event.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(color: const Color(0xFFE7F4E9), borderRadius: BorderRadius.circular(20)),
+                child: const Text('Upcoming', style: TextStyle(color: _green, fontSize: 11, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            _MetaLine(icon: Icons.access_time, text: '${MaterialLocalizations.of(context).formatMediumDate(event.startsAt)} · ${TimeOfDay.fromDateTime(event.startsAt).format(context)}'),
+            _MetaLine(icon: Icons.location_on_outlined, text: event.place),
+            const SizedBox(height: 8),
+            Row(children: [
+              const Icon(Icons.confirmation_number_outlined, size: 15, color: _green),
+              const SizedBox(width: 6),
+              Expanded(child: Text(event.price == 0 ? 'Free entry' : '${event.price.toStringAsFixed(2)} cUSD', style: const TextStyle(fontSize: 12, color: Colors.black54))),
+              Text('${event.available} available', style: const TextStyle(fontSize: 11, color: _green, fontWeight: FontWeight.w700)),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketListCard extends StatelessWidget {
+  const _TicketListCard({required this.ticket, required this.onTap});
+  final _GreenTicket ticket;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            Container(width: 44, height: 44, decoration: BoxDecoration(color: const Color(0xFFE7F4E9), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.qr_code_2, color: _green)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(ticket.event.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 5),
+              Text('${MaterialLocalizations.of(context).formatMediumDate(ticket.event.startsAt)} · ${ticket.event.place}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 5),
+              Text(ticket.reference, style: const TextStyle(fontSize: 11, letterSpacing: 1.1, color: _green, fontWeight: FontWeight.w700)),
+            ])),
+            const SizedBox(width: 8),
+            const Text('Active', style: TextStyle(color: _green, fontSize: 11, fontWeight: FontWeight.w700)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _QrPreviewPainter extends CustomPainter {
+  _QrPreviewPainter(this.value);
+  final String value;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const cells = 25;
+    final cell = size.width / cells;
+    final paint = Paint()..color = const Color(0xFF202124);
+    final seed = value.codeUnits.fold<int>(0, (sum, unit) => sum * 31 + unit);
+    bool finder(int x, int y, int originX, int originY) {
+      final dx = x - originX;
+      final dy = y - originY;
+      if (dx < 0 || dx > 6 || dy < 0 || dy > 6) return false;
+      return dx == 0 || dx == 6 || dy == 0 || dy == 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4);
+    }
+
+    for (var y = 0; y < cells; y++) {
+      for (var x = 0; x < cells; x++) {
+        final inFinderArea = (x < 7 && y < 7) || (x >= cells - 7 && y < 7) || (x < 7 && y >= cells - 7);
+        final isFinder = finder(x, y, 0, 0) || finder(x, y, cells - 7, 0) || finder(x, y, 0, cells - 7);
+        final bit = ((x * 17 + y * 29 + seed + x * y * 3) % 7) < 3;
+        if (isFinder || (!inFinderArea && bit)) {
+          canvas.drawRect(Rect.fromLTWH(x * cell, y * cell, cell * .86, cell * .86), paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _QrPreviewPainter oldDelegate) => oldDelegate.value != value;
+}
+
+class WalletPage extends StatefulWidget {
+  const WalletPage({super.key});
+  @override
+  WalletPageState createState() => WalletPageState();
+}
+
+class WalletPageState extends State<WalletPage> {
+  bool _loading = true;
+  int _points = 0;
+  String? _error;
+
+  Future<void> refresh() async {
+    if (!_supabaseConfigured) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) setState(() { _loading = false; _points = 0; });
+      return;
+    }
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final rows = await Supabase.instance.client
+          .from('point_ledger')
+          .select('points')
+          .eq('participant_id', user.id);
+      final total = (rows as List).fold<int>(0, (sum, row) => sum + ((row['points'] as num?)?.toInt() ?? 0));
+      if (mounted) setState(() { _points = total; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = _supabaseConfigured ? Supabase.instance.client.auth.currentUser : null;
+    return ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 28), children: [
+      const _BrandHeader(),
+      const SizedBox(height: 24),
+      const _SectionTitle('Green Wallet', 'Your verified participation and community reward points.'),
+      const SizedBox(height: 16),
+      if (!_supabaseConfigured)
+        const _InfoCard(icon: Icons.settings_outlined, title: 'Wallet setup needed', text: 'Connect Supabase to load your account and verified Green Points.')
+      else if (user == null)
+        _InfoCard(
+          icon: Icons.lock_outline,
+          title: 'Sign in to view your wallet',
+          text: 'Open the Go Green tab to create an account or sign in.',
+        )
+      else ...[
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(color: _darkGreen, borderRadius: BorderRadius.circular(24)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('GREEN POINTS BALANCE', style: TextStyle(color: Colors.white70, letterSpacing: 1.1, fontSize: 11, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 10),
+            if (_loading) const SizedBox(height: 42, child: Align(alignment: Alignment.centerLeft, child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white))))
+            else Text('$_points', style: const TextStyle(color: Color(0xFFBFE77B), fontSize: 38, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            const Text('Earn points when an organizer verifies your attendance.', style: TextStyle(color: Colors.white70, height: 1.35)),
+          ]),
+        ),
+        if (_error != null) _Message(text: _error!),
+        const SizedBox(height: 12),
+        const _InfoCard(icon: Icons.verified_outlined, title: 'Verified activity only', text: 'Points are recorded after an organizer confirms attendance. Green Points have no cash value.'),
+        const _InfoCard(icon: Icons.confirmation_number_outlined, title: 'Event tickets', text: 'Ticket reservation is a preview in this build. Payments and ticket validation are not connected.'),
+      ],
+    ]);
+  }
 }
 
 class AboutPage extends StatelessWidget {
