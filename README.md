@@ -1,6 +1,6 @@
 # Go Green Mates mobile app
 
-A Flutter mobile client for Go Green Mates. The app has five bottom navigation screens: **Home, Services, Go Green, Events, and Wallet**. Events includes Upcoming and My Tickets views with event details and a ticket display. The Go Green tab retains the Supabase-powered Impact Hub for accounts, activity listings, registrations, organizer attendance verification, and Green Points.
+A Flutter mobile client for Go Green Mates. A branded Go Green Mates splash screen appears first while the app initializes, then the app opens five bottom navigation screens: **Home, Services, Go Green, Events, and Wallet**. Events includes Upcoming and My Tickets views with event details and a ticket display. The Go Green tab retains the Supabase-powered Impact Hub for accounts, activity listings, registrations, organizer attendance verification, and Green Points.
 
 ## Requirements
 
