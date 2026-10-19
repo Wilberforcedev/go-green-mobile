@@ -12,9 +12,6 @@ const _supabaseConfigured = _supabaseUrl != '' && _supabaseAnonKey != '';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (_supabaseConfigured) {
-    await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
-  }
   runApp(const GoGreenApp());
 }
 
@@ -48,7 +45,105 @@ class GoGreenApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const MainShell(),
+        home: const _StartupGate(),
+      );
+}
+
+class _StartupGate extends StatefulWidget {
+  const _StartupGate();
+
+  @override
+  State<_StartupGate> createState() => _StartupGateState();
+}
+
+class _StartupGateState extends State<_StartupGate> {
+  bool _ready = false;
+  bool _starting = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    setState(() { _starting = true; _error = null; });
+    try {
+      if (_supabaseConfigured) {
+        await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      if (mounted) setState(() { _ready = true; _starting = false; });
+    } catch (error) {
+      if (mounted) setState(() { _error = error.toString(); _starting = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_ready) return const MainShell();
+    return _SplashScreen(
+      loading: _starting,
+      error: _error,
+      onRetry: _start,
+    );
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen({required this.loading, required this.error, required this.onRetry});
+
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: _cream,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 92,
+                    height: 92,
+                    decoration: BoxDecoration(
+                      color: _green,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x22123C2C), blurRadius: 22, offset: Offset(0, 10)),
+                      ],
+                    ),
+                    child: const Icon(Icons.eco_rounded, color: Color(0xFFBFE77B), size: 54),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'GO GREEN MATES',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _darkGreen, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.8),
+                  ),
+                  const SizedBox(height: 7),
+                  const Text(
+                    'Small actions. Visible impact.',
+                    style: TextStyle(color: Colors.black54, fontSize: 13),
+                  ),
+                  const SizedBox(height: 30),
+                  if (loading)
+                    const SizedBox(width: 140, child: LinearProgressIndicator(color: _green, backgroundColor: Color(0xFFDDE8DE)))
+                  else if (error != null) ...[
+                    Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                    const SizedBox(height: 12),
+                    FilledButton(onPressed: onRetry, child: const Text('Retry')),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
       );
 }
 
