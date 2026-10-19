@@ -10,7 +10,7 @@ const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 const _supabaseConfigured = _supabaseUrl != '' && _supabaseAnonKey != '';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const GoGreenApp());
 }
