@@ -91,39 +91,289 @@ class _MainShellState extends State<MainShell> {
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
   @override
   Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
           const _BrandHeader(),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           Container(
-            height: 390,
-            padding: const EdgeInsets.all(26),
+            constraints: const BoxConstraints(minHeight: 390),
+            padding: const EdgeInsets.all(25),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
               color: _darkGreen,
               image: const DecorationImage(
-                image: NetworkImage('https://images.pexels.com/photos/356036/pexels-photo-356036.jpeg?auto=compress&cs=tinysrgb&w=1200'),
+                image: NetworkImage(
+                  'https://images.pexels.com/photos/356036/pexels-photo-356036.jpeg?auto=compress&cs=tinysrgb&w=1200',
+                ),
                 fit: BoxFit.cover,
-                opacity: .34,
+                opacity: .30,
               ),
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
-              const Text('Together for a greener tomorrow', style: TextStyle(color: Colors.white, fontSize: 36, height: 1.08, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
-              const Text('Engage · Empower · Earn', style: TextStyle(color: Colors.white70, fontSize: 17)),
-              const SizedBox(height: 24),
-              FilledButton.icon(onPressed: () => _openHub(context), icon: const Icon(Icons.eco), label: const Text('Explore the Impact Hub')),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.16),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Text(
+                    'ENGAGE  ·  EMPOWER  ·  EARN',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Small actions.\nA greener future.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    height: 1.04,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -.8,
+                  ),
+                ),
+                const SizedBox(height: 13),
+                const Text(
+                  'Join people making everyday environmental action count in their communities.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _openHub(context),
+                    icon: const Icon(Icons.eco_outlined),
+                    label: const Text('Explore the Impact Hub'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFBFE77B),
+                      foregroundColor: _darkGreen,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
-          const _SectionTitle('Make a difference together', 'Take part in community action and follow verified activities.'),
-          const SizedBox(height: 14),
-          const _InfoCard(icon: Icons.park_outlined, title: 'Care for nature', text: 'Join tree planting and environmental learning activities shared by organizers.'),
-          const _InfoCard(icon: Icons.groups_outlined, title: 'Build community', text: 'Meet people taking practical steps toward cleaner, greener neighbourhoods.'),
-          const _InfoCard(icon: Icons.verified_outlined, title: 'Track participation', text: 'Sign in to register. Organizers confirm attendance and the system records points.'),
+          const SizedBox(height: 30),
+          const _SectionTitle(
+            'Make your actions count',
+            'Choose practical ways to care for the environment and connect with your community.',
+          ),
+          const SizedBox(height: 16),
+          const _HomePillar(
+            icon: Icons.park_outlined,
+            title: 'Grow greener spaces',
+            text: 'Take part in tree planting and learn how to care for the trees we grow.',
+          ),
+          const _HomePillar(
+            icon: Icons.recycling_outlined,
+            title: 'Keep communities clean',
+            text: 'Support clean-ups, better waste practices and recycling in your neighbourhood.',
+          ),
+          const _HomePillar(
+            icon: Icons.school_outlined,
+            title: 'Learn and inspire',
+            text: 'Discover simple climate actions and share what you learn with others.',
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF1E9),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.stars_rounded, color: _green, size: 27),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your impact, recognised',
+                        style: TextStyle(
+                          color: _darkGreen,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'Sign up for activities and earn Green Points when an organizer verifies your participation.',
+                        style: TextStyle(color: Colors.black54, height: 1.4, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          const _SectionTitle(
+            'How Go Green Mates works',
+            'A simple path from taking action to seeing your contribution.',
+          ),
+          const SizedBox(height: 16),
+          const _HomeStep(
+            number: '01',
+            title: 'Discover',
+            text: 'Find an activity or environmental challenge that interests you.',
+          ),
+          const _HomeStep(
+            number: '02',
+            title: 'Participate',
+            text: 'Join in, contribute and connect with other community members.',
+          ),
+          const _HomeStep(
+            number: '03',
+            title: 'Get recognised',
+            text: 'Have your participation verified and see your Green Points grow.',
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: () => _openHub(context),
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: const Text('Get started in the Impact Hub'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _green,
+              side: const BorderSide(color: _green),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+            ),
+          ),
         ],
+      );
+}
+
+class _HomePillar extends StatelessWidget {
+  const _HomePillar({
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
+
+  final IconData icon;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: _green.withOpacity(.09),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(icon, color: _green, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: _darkGreen,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        height: 1.4,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _HomeStep extends StatelessWidget {
+  const _HomeStep({
+    required this.number,
+    required this.title,
+    required this.text,
+  });
+
+  final String number;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              number,
+              style: const TextStyle(
+                color: _green,
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: _darkGreen,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(text, style: const TextStyle(color: Colors.black54, height: 1.4)),
+                ],
+              ),
+            ),
+          ],
+        ),
       );
 }
 
