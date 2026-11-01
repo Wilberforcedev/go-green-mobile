@@ -12,7 +12,9 @@ void main() {
     expect(find.text('Impact Hub'), findsOneWidget);
   });
 
-  testWidgets('shows setup guidance when Supabase is not configured', (tester) async {
+  testWidgets('shows setup guidance when Supabase is not configured', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GoGreenApp());
     await tester.pump();
 
@@ -23,7 +25,9 @@ void main() {
     expect(find.text('Add Supabase configuration'), findsOneWidget);
   });
 
-  testWidgets('campaign tab shows published campaign information', (tester) async {
+  testWidgets('campaign tab shows published campaign information', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GoGreenApp());
     await tester.pump();
 
