@@ -39,4 +39,4 @@ flutter test
 flutter build apk --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
 ```
 
-The repository should be opened and generated with the Flutter SDK to add platform runner directories (`android/`, `ios/`) for the target development machine. Those generated folders are SDK-version-specific and could not be produced in the current environment because Flutter is not installed.
+The repository does not include generated platform runner directories. With the Flutter SDK installed, run this from the project root to generate Android and iOS runners:\n\n```sh\nflutter create --platforms=android,ios .\n```\n\nAndroid builds require the Android SDK. Building or running the iOS app requires macOS and Xcode.
