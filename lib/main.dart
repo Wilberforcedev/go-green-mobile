@@ -26,33 +26,33 @@ class GoGreenApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Go Green Mates',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: _green),
-          scaffoldBackgroundColor: _cream,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: _cream,
-            foregroundColor: _darkGreen,
-            centerTitle: false,
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          cardTheme: CardThemeData(
-            color: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: Color(0xFFE4EAE5)),
-            ),
-          ),
+    title: 'Go Green Mates',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(seedColor: _green),
+      scaffoldBackgroundColor: _cream,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: _cream,
+        foregroundColor: _darkGreen,
+        centerTitle: false,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE4EAE5)),
         ),
-        home: const MainShell(),
-      );
+      ),
+    ),
+    home: const MainShell(),
+  );
 }
 
 class MainShell extends StatefulWidget {
@@ -74,7 +74,9 @@ class _MainShellState extends State<MainShell> {
       const AboutPage(),
     ];
     return Scaffold(
-      body: SafeArea(child: IndexedStack(index: _tab, children: pages)),
+      body: SafeArea(
+        child: IndexedStack(index: _tab, children: pages),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (index) {
@@ -82,10 +84,26 @@ class _MainShellState extends State<MainShell> {
           if (index == 2) _hubKey.currentState?.refresh();
         },
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.campaign_outlined), selectedIcon: Icon(Icons.campaign), label: 'Campaigns'),
-          NavigationDestination(icon: Icon(Icons.eco_outlined), selectedIcon: Icon(Icons.eco), label: 'Impact Hub'),
-          NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'About'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.campaign_outlined),
+            selectedIcon: Icon(Icons.campaign),
+            label: 'Campaigns',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.eco_outlined),
+            selectedIcon: Icon(Icons.eco),
+            label: 'Impact Hub',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.info_outline),
+            selectedIcon: Icon(Icons.info),
+            label: 'About',
+          ),
         ],
       ),
     );
