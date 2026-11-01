@@ -662,7 +662,18 @@ class ImpactHubPageState extends State<ImpactHubPage> {
                 .length,
           ),
           if (_notice != null) _Message(text: _notice!, good: true),
-          if (_error != null) _Message(text: _error!),
+          if (_error != null) ...[
+            _Message(text: _error!),
+            if (!_loading)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: refresh,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try again'),
+                ),
+              ),
+          ],
           const SizedBox(height: 20),
           if (_role == 'organizer' || _role == 'admin')
             _OrganizerTools(onPublished: refresh, userId: _user!.id),
