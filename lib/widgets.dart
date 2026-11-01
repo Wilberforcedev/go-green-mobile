@@ -22,6 +22,12 @@ class _GamificationDashboard extends StatelessWidget {
                 : ((points ~/ 500) + 1) * 500;
     final progress = points / nextMilestone;
     final remaining = nextMilestone - points;
+    final badges = <({String title, IconData icon, bool earned})>[
+      (title: 'First step', icon: Icons.eco_outlined, earned: verifiedActions >= 1),
+      (title: 'Green regular', icon: Icons.recycling_outlined, earned: verifiedActions >= 5),
+      (title: 'Impact builder', icon: Icons.park_outlined, earned: verifiedActions >= 10),
+      (title: 'Point collector', icon: Icons.stars_outlined, earned: points >= 100),
+    ];
 
     return Card(
       child: Padding(
@@ -71,6 +77,25 @@ class _GamificationDashboard extends StatelessWidget {
             Text(
               '$remaining Green Points to your next milestone',
               style: const TextStyle(color: Colors.black54, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final badge in badges)
+                  Chip(
+                    avatar: Icon(
+                      badge.icon,
+                      size: 18,
+                      color: badge.earned ? _green : Colors.black45,
+                    ),
+                    label: Text(badge.title),
+                    backgroundColor: badge.earned
+                        ? const Color(0xFFE7F4E9)
+                        : const Color(0xFFF1F2F1),
+                  ),
+              ],
             ),
           ],
         ),
