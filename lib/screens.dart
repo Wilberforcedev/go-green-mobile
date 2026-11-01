@@ -391,10 +391,14 @@ class ImpactHubPageState extends State<ImpactHubPage> {
   String? _notice;
   String _query = '';
   String _category = 'All activities';
+  final _search = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _name = TextEditingController();
+  final _authFormKey = GlobalKey<FormState>();
   bool _creatingAccount = false;
+  bool _obscurePassword = true;
+  int _refreshRequestId = 0;
 
   @override
   void initState() {
@@ -402,7 +406,20 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     if (_configured) {
       _user = _db!.auth.currentUser;
       _authSub = _db!.auth.onAuthStateChange.listen((event) {
-        setState(() => _user = event.session?.user);
+        if (!mounted) return;
+        final nextUser = event.session?.user;
+        final identityChanged = _user?.id != nextUser?.id;
+        setState(() {
+          _user = nextUser;
+          if (identityChanged) {
+            _activities = [];
+            _signups = [];
+            _points = 0;
+            _role = 'participant';
+            _error = null;
+            _notice = null;
+          }
+        });
         refresh();
       });
       refresh();
@@ -414,6 +431,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
   @override
   void dispose() {
     _authSub?.cancel();
+    _search.dispose();
     _email.dispose();
     _password.dispose();
     _name.dispose();
@@ -421,10 +439,20 @@ class ImpactHubPageState extends State<ImpactHubPage> {
   }
 
   Future<void> refresh() async {
-    if (!_configured || _user == null) {
-      if (mounted) setState(() => _loading = false);
+    final requestId = ++_refreshRequestId;
+    final userId = _user?.id;
+    if (!_configured || userId == null) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _activities = [];
+        _signups = [];
+        _points = 0;
+        _role = 'participant';
+      });
       return;
     }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -438,13 +466,12 @@ class ImpactHubPageState extends State<ImpactHubPage> {
               'id,activity_id,participant_id,status,created_at,activity:activities(title,starts_at,place,points),participant:profiles(display_name)',
             )
             .order('created_at', ascending: false),
-        _db!
-            .from('point_ledger')
-            .select('points')
-            .eq('participant_id', _user!.id),
-        _db!.from('profiles').select('role').eq('id', _user!.id).maybeSingle(),
+        _db!.from('point_ledger').select('points').eq('participant_id', userId),
+        _db!.from('profiles').select('role').eq('id', userId).maybeSingle(),
       ]);
-      if (!mounted) return;
+      if (!mounted || requestId != _refreshRequestId || _user?.id != userId) {
+        return;
+      }
       setState(() {
         _activities = List<Map<String, dynamic>>.from(results[0] as List);
         _signups = List<Map<String, dynamic>>.from(results[1] as List);
@@ -458,18 +485,35 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         _loading = false;
       });
     } catch (e) {
-      if (mounted)
+      if (mounted && requestId == _refreshRequestId && _user?.id == userId) {
         setState(() {
           _error = _friendly(e);
           _loading = false;
         });
+      }
     }
   }
 
-  String _friendly(Object error) =>
-      error is PostgrestException ? error.message : error.toString();
+  String _friendly(Object error) {
+    if (error is AuthException) {
+      final message = error.message.toLowerCase();
+      if (message.contains('invalid login credentials')) {
+        return 'The email or password is incorrect. Please try again.';
+      }
+      if (message.contains('email not confirmed')) {
+        return 'Please confirm your email address before signing in.';
+      }
+      if (message.contains('already registered')) {
+        return 'An account already exists for this email. Try signing in.';
+      }
+      return error.message;
+    }
+    if (error is PostgrestException) return error.message;
+    return 'Something went wrong. Check your connection and try again.';
+  }
 
   Future<void> _authenticate() async {
+    if (!_authFormKey.currentState!.validate()) return;
     setState(() {
       _working = true;
       _error = null;
@@ -482,8 +526,9 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           password: _password.text,
           data: {'display_name': _name.text.trim()},
         );
-        if (response.session == null)
+        if (response.session == null) {
           _notice = 'Check your email to confirm your account, then sign in.';
+        }
       } else {
         await _db!.auth.signInWithPassword(
           email: _email.text.trim(),
@@ -492,8 +537,9 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       }
     } catch (e) {
       _error = _friendly(e);
+    } finally {
+      if (mounted) setState(() => _working = false);
     }
-    if (mounted) setState(() => _working = false);
   }
 
   Future<void> _join(String activityId) async {
@@ -626,6 +672,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           ),
           const SizedBox(height: 12),
           TextField(
+            controller: _search,
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
               hintText: 'Search activities',
@@ -650,11 +697,28 @@ class ImpactHubPageState extends State<ImpactHubPage> {
               padding: EdgeInsets.all(24),
               child: Center(child: CircularProgressIndicator()),
             ),
-          if (!_loading && visible.isEmpty)
-            const _InfoCard(
+          if (!_loading && _error == null && visible.isEmpty)
+            _InfoCard(
               icon: Icons.event_busy,
-              title: 'No activities yet',
-              text: 'Check back when an organizer publishes an activity.',
+              title: _activities.isEmpty
+                  ? 'No activities yet'
+                  : 'No matching activities',
+              text: _activities.isEmpty
+                  ? 'Check back when an organizer publishes an activity.'
+                  : 'Try a different search or category filter.',
+            ),
+          if (!_loading && _activities.isNotEmpty && visible.isEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() {
+                  _search.clear();
+                  _query = '';
+                  _category = 'All activities';
+                }),
+                icon: const Icon(Icons.filter_alt_off),
+                label: const Text('Clear search and filters'),
+              ),
             ),
           for (final activity in visible)
             _ActivityCard(
@@ -731,60 +795,109 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         'Your activities and points follow your account across devices.',
       ),
       const SizedBox(height: 16),
-      if (_creatingAccount) ...[
-        const Text('Your name'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _name,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(hintText: 'Full name'),
+      Form(
+        key: _authFormKey,
+        child: AutofillGroup(
+          child: Column(
+            children: [
+              if (_creatingAccount) ...[
+                TextFormField(
+                  controller: _name,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Your name'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Enter your name.'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+              ],
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
+                      ? null
+                      : 'Enter a valid email address.';
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _password,
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.done,
+                autofillHints: [
+                  _creatingAccount
+                      ? AutofillHints.newPassword
+                      : AutofillHints.password,
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  hintText: _creatingAccount ? 'At least 8 characters' : null,
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword
+                        ? 'Show password'
+                        : 'Hide password',
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                  ),
+                ),
+                validator: (value) {
+                  final password = value ?? '';
+                  if (password.isEmpty) return 'Enter your password.';
+                  if (_creatingAccount && password.length < 8) {
+                    return 'Use at least 8 characters.';
+                  }
+                  return null;
+                },
+                onFieldSubmitted: (_) {
+                  if (!_working) _authenticate();
+                },
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _working ? null : _authenticate,
+                  child: Text(
+                    _working
+                        ? 'Please wait…'
+                        : _creatingAccount
+                        ? 'Create account'
+                        : 'Sign in',
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: _working
+                    ? null
+                    : () => setState(() {
+                        _creatingAccount = !_creatingAccount;
+                        _error = null;
+                        _notice = null;
+                        _authFormKey.currentState?.reset();
+                      }),
+                child: Text(
+                  _creatingAccount
+                      ? 'Already have an account? Sign in'
+                      : 'New here? Create an account',
+                ),
+              ),
+              if (_notice != null) _Message(text: _notice!, good: true),
+              if (_error != null) _Message(text: _error!),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-      ],
-      const Text('Email'),
-      const SizedBox(height: 6),
-      TextField(
-        controller: _email,
-        keyboardType: TextInputType.emailAddress,
-        autofillHints: const [AutofillHints.email],
-        decoration: const InputDecoration(hintText: 'you@example.com'),
       ),
-      const SizedBox(height: 12),
-      const Text('Password'),
-      const SizedBox(height: 6),
-      TextField(
-        controller: _password,
-        obscureText: true,
-        autofillHints: [
-          _creatingAccount ? AutofillHints.newPassword : AutofillHints.password,
-        ],
-        decoration: const InputDecoration(hintText: 'At least 8 characters'),
-      ),
-      const SizedBox(height: 16),
-      FilledButton(
-        onPressed: _working ? null : _authenticate,
-        child: Text(
-          _working
-              ? 'Please wait…'
-              : _creatingAccount
-              ? 'Create account'
-              : 'Sign in',
-        ),
-      ),
-      TextButton(
-        onPressed: () => setState(() {
-          _creatingAccount = !_creatingAccount;
-          _error = null;
-          _notice = null;
-        }),
-        child: Text(
-          _creatingAccount
-              ? 'Already have an account? Sign in'
-              : 'New here? Create an account',
-        ),
-      ),
-      if (_notice != null) _Message(text: _notice!, good: true),
-      if (_error != null) _Message(text: _error!),
     ],
   );
 }
