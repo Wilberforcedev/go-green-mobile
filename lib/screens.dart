@@ -1,5 +1,23 @@
 part of 'main.dart';
 
+String _friendlyAppError(Object error) {
+  if (error is AuthException) {
+    final message = error.message.toLowerCase();
+    if (message.contains('invalid login credentials')) {
+      return 'The email or password is incorrect. Please try again.';
+    }
+    if (message.contains('email not confirmed')) {
+      return 'Please confirm your email address before signing in.';
+    }
+    if (message.contains('already registered')) {
+      return 'An account already exists for this email. Try signing in.';
+    }
+    return error.message;
+  }
+  if (error is PostgrestException) return error.message;
+  return 'Something went wrong. Check your connection and try again.';
+}
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -9,73 +27,99 @@ class HomePage extends StatelessWidget {
     children: [
       const _BrandHeader(),
       const SizedBox(height: 24),
-      Container(
-        constraints: const BoxConstraints(minHeight: 390),
-        padding: const EdgeInsets.all(25),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          color: _darkGreen,
-          image: const DecorationImage(
-            image: NetworkImage(
-              'https://images.pexels.com/photos/356036/pexels-photo-356036.jpeg?auto=compress&cs=tinysrgb&w=1200',
-            ),
-            fit: BoxFit.cover,
-            opacity: .30,
+      ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 390),
+          padding: const EdgeInsets.all(25),
+          decoration: const BoxDecoration(color: _darkGreen),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.network(
+                  'https://images.pexels.com/photos/356036/pexels-photo-356036.jpeg?auto=compress&cs=tinysrgb&w=1200',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const ColoredBox(color: _darkGreen),
+                ),
+              ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        _darkGreen.withOpacity(.42),
+                        _darkGreen.withOpacity(.96),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.16),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: const Text(
+                      'ENGAGE  ·  EMPOWER  ·  EARN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Small actions.\nA greener future.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 38,
+                      height: 1.04,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -.8,
+                    ),
+                  ),
+                  const SizedBox(height: 13),
+                  const Text(
+                    'Join people making everyday environmental action count in their communities.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _openHub(context),
+                      icon: const Icon(Icons.eco_outlined),
+                      label: const Text('Explore the Impact Hub'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFBFE77B),
+                        foregroundColor: _darkGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.16),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: const Text(
-                'ENGAGE  ·  EMPOWER  ·  EARN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Small actions.\nA greener future.',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 38,
-                height: 1.04,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -.8,
-              ),
-            ),
-            const SizedBox(height: 13),
-            const Text(
-              'Join people making everyday environmental action count in their communities.',
-              style: TextStyle(color: Colors.white, fontSize: 15, height: 1.5),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => _openHub(context),
-                icon: const Icon(Icons.eco_outlined),
-                label: const Text('Explore the Impact Hub'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFBFE77B),
-                  foregroundColor: _darkGreen,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
       const SizedBox(height: 30),
@@ -494,23 +538,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     }
   }
 
-  String _friendly(Object error) {
-    if (error is AuthException) {
-      final message = error.message.toLowerCase();
-      if (message.contains('invalid login credentials')) {
-        return 'The email or password is incorrect. Please try again.';
-      }
-      if (message.contains('email not confirmed')) {
-        return 'Please confirm your email address before signing in.';
-      }
-      if (message.contains('already registered')) {
-        return 'An account already exists for this email. Try signing in.';
-      }
-      return error.message;
-    }
-    if (error is PostgrestException) return error.message;
-    return 'Something went wrong. Check your connection and try again.';
-  }
+  String _friendly(Object error) => _friendlyAppError(error);
 
   Future<void> _authenticate() async {
     if (!_authFormKey.currentState!.validate()) return;
