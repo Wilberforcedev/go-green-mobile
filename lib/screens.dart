@@ -570,6 +570,38 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     }
   }
 
+  Future<void> _confirmSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+          'You can sign back in to view your activities and points.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _working = true);
+    try {
+      await _db!.auth.signOut();
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendly(e));
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
   Future<void> _join(String activityId) async {
     await _run(() async {
       await _db!.rpc('join_activity', params: {'activity_uuid': activityId});
@@ -671,7 +703,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
                   ),
                 ),
                 IconButton(
-                  onPressed: _working ? null : () => _db!.auth.signOut(),
+                  onPressed: _working ? null : _confirmSignOut,
                   tooltip: 'Sign out',
                   color: Colors.white,
                   icon: const Icon(Icons.logout),
