@@ -512,12 +512,24 @@ class _ActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = DateTime.tryParse('${activity['starts_at']}')?.toLocal();
+    final spotsRemaining = (activity['spots_remaining'] as num?)?.toInt() ?? 0;
+    final hasNotStarted = date != null && date.isAfter(DateTime.now());
     final canJoin =
         role == 'participant' &&
         !signedUp &&
-        (activity['spots_remaining'] as num? ?? 0) > 0 &&
-        date != null &&
-        date.isAfter(DateTime.now());
+        spotsRemaining > 0 &&
+        hasNotStarted;
+    final joinLabel = signedUp
+        ? 'You are registered'
+        : role != 'participant'
+        ? 'Participants can join'
+        : date == null
+        ? 'Date unavailable'
+        : !hasNotStarted
+        ? 'Activity ended'
+        : spotsRemaining == 0
+        ? 'Fully booked'
+        : 'Join this activity';
     final image = activity['image_url'] as String?;
 
     return Card(
@@ -598,15 +610,7 @@ class _ActivityCard extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: canJoin && !busy ? onJoin : null,
-                    child: Text(
-                      signedUp
-                          ? 'You are registered'
-                          : role != 'participant'
-                          ? 'Participants can join'
-                          : !canJoin
-                          ? 'Registration unavailable'
-                          : 'Join this activity',
-                    ),
+                    child: Text(joinLabel),
                   ),
                 ),
               ],
