@@ -596,6 +596,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       if (mounted) setState(() => _working = false);
     }
   }
+
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
