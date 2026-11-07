@@ -572,7 +572,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
 
   Future<void> _requestPasswordReset() async {
     final email = _email.text.trim();
-    final validEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+).hasMatch(email);
+    final validEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
     if (!validEmail) {
       setState(() {
         _error = 'Enter a valid email address to reset your password.';
@@ -596,6 +596,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       if (mounted) setState(() => _working = false);
     }
   }
+
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
