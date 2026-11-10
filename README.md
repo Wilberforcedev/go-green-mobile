@@ -1,15 +1,33 @@
 # Go Green Mates mobile app
 
-A Flutter app for Go Green Mates. It provides Home, Campaigns, About and Impact Hub sections. The Impact Hub connects to the same Supabase project as the website for accounts, activities, registrations, attendance verification and Green Points.
+A Flutter mobile app for Go Green Mates with Home, Campaigns, About and Impact Hub sections. The Impact Hub provides participant accounts, activity registration, organizer publishing, attendance verification and Green Points.
 
-## Requirements
+## Supabase backend
 
-- Flutter SDK on the stable channel
-- Access to the Go Green Mates Supabase project and its website database migration
+This repository includes the Supabase schema used by the mobile app in `supabase/migrations`. Apply it to a dedicated Supabase project before connecting real users:
 
-## Configure Supabase
+```sh
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+```
 
-Pass the project URL and **public anon/publishable key** at build or run time:
+To apply migrations in a local Supabase development stack, run `supabase start` and then `supabase db reset`. The latter resets the local database.
+
+The companion website repository currently describes its Impact Hub as a browser-local prototype. It does not use this schema, so website and mobile activity data do not currently sync. Connecting the website to this backend is a separate integration.
+
+New accounts receive the `participant` role. Promote trusted organizers through the Supabase SQL editor or another privileged backend process:
+
+```sql
+update public.profiles
+set role = 'organizer'
+where id = 'AUTH_USER_UUID';
+```
+
+Never allow the mobile client to change roles. The migration restricts data access with row-level security and keeps join/attendance operations in server-side functions.
+
+## Supabase configuration
+
+Pass the project URL and **public anon/publishable key** when running the app:
 
 ```sh
 flutter run \
@@ -17,46 +35,53 @@ flutter run \
   --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 ```
 
-Never put a Supabase service-role key in the app. The public key is intended for client apps; access must be restricted by the project’s row-level security policies and server-side functions.
+Never bundle a service-role key. The Impact Hub displays setup guidance when configuration is missing.
 
-The Impact Hub can open without Supabase configuration and shows setup guidance. Authentication, organizer permissions, activity capacity, attendance verification and point calculations depend on the configured Supabase project and migration.
-
-For password recovery, configure the Supabase Auth email template and redirect allowlist for the intended mobile or website reset flow.
+For production, configure a custom SMTP provider for Supabase Auth, email confirmation templates and redirect allowlists. Password recovery redirects to `io.supabase.flutter://reset-callback/`. Add that URI to Supabase Auth’s allowed redirects and register the scheme in the generated Android and iOS projects. The app handles Supabase’s password-recovery event and asks the user to set a new password.
 
 ## Run locally
 
 ```sh
+flutter create --platforms=android,ios .
 flutter pub get
 flutter run \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 ```
 
-Commit the generated `pubspec.lock` after resolving dependencies so local and CI builds use the same package versions.
+Commit the generated `pubspec.lock` and reviewed platform projects before release. Android and iOS runner folders are not currently checked into this repository.
 
 ## Checks
 
-The GitHub Actions workflow runs static analysis, widget tests and an Android release-mode APK build. The Android runner project is generated in CI because native platform directories are not currently checked into this repository. The CI APK is a build smoke check; it is not signed for store submission.
+GitHub Actions runs Flutter analysis and widget tests, builds an Android release-mode APK as a compile smoke check, and applies the Supabase migrations to a local database. The APK is not signed for store submission.
 
-Run the same checks locally:
+Run the Flutter checks locally:
 
 ```sh
 flutter create --platforms=android .
 flutter pub get
 flutter analyze
 flutter test --coverage
-flutter build apk --debug
+flutter build apk --release
 ```
 
-## Preparing a store release
+Run the migration locally with Supabase CLI and Docker:
 
-The repository is not yet ready for direct Play Store or App Store submission. Before publishing:
+```sh
+supabase start
+supabase db reset
+supabase stop
+```
 
-1. Generate and review the native projects: `flutter create --platforms=android,ios .`. Commit the generated folders and confirm the Android application ID and iOS bundle ID.
-2. Add app icons, launch screens, store screenshots, support details and a privacy policy that accurately explains account, activity, attendance and points data.
-3. Configure production Supabase URL/key values and verify the website migration, row-level security policies, organizer role setup, email confirmation and password recovery redirects.
-4. Set up Android signing and Play Console release access. For iOS, use macOS/Xcode, Apple signing and App Store Connect.
-5. Test registration, sign-in, password recovery, activity registration, organizer publishing and attendance verification on physical devices against the production Supabase project.
-6. Review account deletion and data retention requirements before store submission. Account deletion needs a secure server-side implementation; the mobile client must not use an admin/service-role key.
+## Before store submission
 
-Android release builds require Android SDK and signing configuration. iOS builds require macOS and Xcode.
+The project still needs the following release work:
+
+1. Generate, configure and commit Android/iOS runner projects. Set final application/bundle IDs, app icons, launch screens and deep-link URL scheme settings.
+2. Publish a privacy policy and support details that accurately describe account, activity, attendance and points data.
+3. Verify production row-level security, organizer role administration, email confirmation and password recovery against the real Supabase project.
+4. Implement and test account deletion and define data retention, especially for organizer accounts and historical activity records.
+5. Configure Android signing and Play Console release access. For iOS, use macOS/Xcode, Apple signing and App Store Connect.
+6. Test registration, sign-in, email confirmation, password recovery, joining, publishing and attendance verification on physical devices.
+
+Android releases require Android SDK and signing configuration. iOS builds require macOS and Xcode.
