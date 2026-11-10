@@ -37,7 +37,7 @@ flutter run \
 
 Never bundle a service-role key. The Impact Hub displays setup guidance when configuration is missing.
 
-For production, configure a custom SMTP provider for Supabase Auth, email confirmation templates and redirect allowlists. Password recovery redirects to `io.supabase.flutter://reset-callback/`. Add that URI to Supabase Auth’s allowed redirects and register the scheme in the generated Android and iOS projects. The app handles Supabase’s password-recovery event and asks the user to set a new password.
+For production, configure a custom SMTP provider for Supabase Auth, email confirmation templates and redirect allowlists. Account confirmation and password recovery return to `io.supabase.flutter://reset-callback/`. Add that URI to Supabase Auth’s allowed redirects and register the `io.supabase.flutter` URL scheme in the generated Android and iOS projects. The app handles Supabase’s password-recovery event and asks the user to set a new password.
 
 ## Run locally
 
