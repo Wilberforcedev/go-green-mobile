@@ -675,6 +675,8 @@ class _CheckinCard extends StatelessWidget {
     final activity = signup['activity'] as Map<String, dynamic>? ?? {};
     final person = signup['participant'] as Map<String, dynamic>? ?? {};
     final status = signup['status'];
+    final startsAt = DateTime.tryParse('${activity['starts_at'] ?? ''}')?.toLocal();
+    final canVerify = startsAt != null && !startsAt.isAfter(DateTime.now());
 
     return Card(
       child: ListTile(
@@ -684,11 +686,13 @@ class _CheckinCard extends StatelessWidget {
         ),
         subtitle: Text('${activity['title'] ?? 'Activity'} · $status'),
         trailing: status == 'registered'
-            ? IconButton(
-                onPressed: busy ? null : onVerify,
-                tooltip: 'Confirm attendance',
-                icon: const Icon(Icons.verified_outlined, color: _green),
-              )
+            ? canVerify
+                  ? IconButton(
+                      onPressed: busy ? null : onVerify,
+                      tooltip: 'Confirm attendance',
+                      icon: const Icon(Icons.verified_outlined, color: _green),
+                    )
+                  : const Text('Available after start')
             : const Icon(Icons.check_circle, color: _green),
       ),
     );
