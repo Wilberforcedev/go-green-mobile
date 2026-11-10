@@ -230,10 +230,9 @@ grant insert (
 on public.activities to authenticated;
 
 -- The view intentionally returns only public activity fields and an aggregate
--- seat count. Its owner can count all registrations while underlying signup
--- rows remain protected by RLS.
+-- seat count. Standard view-owner permissions let it count all registrations
+-- while underlying signup rows remain protected by RLS.
 create view public.activity_listing
-with (security_invoker = false, security_barrier = true)
 as
 select
   a.id,
