@@ -207,21 +207,24 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
 
     setState(() => _busy = true);
     try {
-      await Supabase.instance.client.from('activities').insert({
-        'organizer_id': widget.userId,
-        'title': _title.text.trim(),
-        'category': _category,
-        'place': _place.text.trim(),
-        'starts_at': _starts!.toUtc().toIso8601String(),
-        'capacity': _capacity,
-        'points': _points,
-        'description': _description.text.trim(),
-        'impact_measure': _impact.text.trim(),
-        'impact_source_url': _source.text.trim().isEmpty
-            ? null
-            : _source.text.trim(),
-        'status': 'published',
-      });
+      await Supabase.instance.client
+          .from('activities')
+          .insert({
+            'organizer_id': widget.userId,
+            'title': _title.text.trim(),
+            'category': _category,
+            'place': _place.text.trim(),
+            'starts_at': _starts!.toUtc().toIso8601String(),
+            'capacity': _capacity,
+            'points': _points,
+            'description': _description.text.trim(),
+            'impact_measure': _impact.text.trim(),
+            'impact_source_url': _source.text.trim().isEmpty
+                ? null
+                : _source.text.trim(),
+            'status': 'published',
+          })
+          .timeout(_requestTimeout);
       _title.clear();
       _place.clear();
       _description.clear();
@@ -319,7 +322,8 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _category,
+                    key: ValueKey(_category),
+                    initialValue: _category,
                     decoration: const InputDecoration(labelText: 'Category'),
                     items:
                         const [
@@ -377,12 +381,14 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
                       labelText: 'Impact source URL (optional)',
                       hintText: 'https://…',
                     ),
-                    validator: (value) =>
-                        value != null &&
-                            value.isNotEmpty &&
-                            !value.startsWith('https://')
-                        ? 'Use an https URL'
-                        : null,
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return null;
+                      final uri = Uri.tryParse(text);
+                      return uri == null || uri.scheme != 'https'
+                          ? 'Use an https URL'
+                          : null;
+                    },
                   ),
                   const SizedBox(height: 8),
                   Align(
@@ -475,6 +481,7 @@ class _StepperField extends StatelessWidget {
         children: [
           IconButton(
             onPressed: value <= min ? null : () => onChanged(value - 1),
+            tooltip: 'Decrease $label',
             icon: const Icon(Icons.remove_circle_outline),
           ),
           Expanded(
@@ -486,6 +493,7 @@ class _StepperField extends StatelessWidget {
           ),
           IconButton(
             onPressed: value >= max ? null : () => onChanged(value + 1),
+            tooltip: 'Increase $label',
             icon: const Icon(Icons.add_circle_outline),
           ),
         ],
@@ -512,11 +520,12 @@ class _ActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = DateTime.tryParse('${activity['starts_at']}')?.toLocal();
-    final spotsRemaining = (activity['spots_remaining'] as num?)?.toInt() ?? 0;
+    final spotsRemaining = (activity['spots_remaining'] as num?)?.toInt();
     final hasNotStarted = date != null && date.isAfter(DateTime.now());
     final canJoin =
         role == 'participant' &&
         !signedUp &&
+        spotsRemaining != null &&
         spotsRemaining > 0 &&
         hasNotStarted;
     final joinLabel = signedUp
@@ -527,6 +536,8 @@ class _ActivityCard extends StatelessWidget {
         ? 'Date unavailable'
         : !hasNotStarted
         ? 'Activity ended'
+        : spotsRemaining == null
+        ? 'Availability unavailable'
         : spotsRemaining == 0
         ? 'Fully booked'
         : 'Join this activity';
@@ -564,7 +575,7 @@ class _ActivityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '${activity['title']}',
+                  '${activity['title'] ?? 'Activity'}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 19,
@@ -572,7 +583,7 @@ class _ActivityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${activity['description']}',
+                  '${activity['description'] ?? ''}',
                   maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.black54, height: 1.4),
@@ -580,7 +591,7 @@ class _ActivityCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 _MetaLine(
                   icon: Icons.location_on_outlined,
-                  text: '${activity['place']}',
+                  text: '${activity['place'] ?? ''}',
                 ),
                 _MetaLine(
                   icon: Icons.calendar_month_outlined,
@@ -588,11 +599,14 @@ class _ActivityCard extends StatelessWidget {
                 ),
                 _MetaLine(
                   icon: Icons.people_outline,
-                  text: '${activity['spots_remaining'] ?? 0} places remaining',
+                  text: spotsRemaining == null
+                      ? 'Availability to be confirmed'
+                      : '$spotsRemaining places remaining',
                 ),
                 _MetaLine(
                   icon: Icons.stars_outlined,
-                  text: '${activity['points']} points after verification',
+                  text:
+                      '${activity['points'] ?? 0} points after verification',
                 ),
                 if ('${activity['impact_measure'] ?? ''}'.isNotEmpty)
                   Padding(
@@ -650,7 +664,7 @@ class _SignupCard extends StatelessWidget {
         trailing: Text(
           attended
               ? 'Verified\n+${activity['points'] ?? 0}'
-              : '${signup['status']}',
+              : _statusLabel(signup['status']),
           textAlign: TextAlign.end,
           style: const TextStyle(color: _green, fontWeight: FontWeight.w700),
         ),
@@ -682,14 +696,21 @@ class _CheckinCard extends StatelessWidget {
           '${person['display_name'] ?? 'Participant'}',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        subtitle: Text('${activity['title'] ?? 'Activity'} · $status'),
+        subtitle: Text(
+          '${activity['title'] ?? 'Activity'} · ${_statusLabel(status)}',
+        ),
         trailing: status == 'registered'
             ? IconButton(
                 onPressed: busy ? null : onVerify,
                 tooltip: 'Confirm attendance',
                 icon: const Icon(Icons.verified_outlined, color: _green),
               )
-            : const Icon(Icons.check_circle, color: _green),
+            : Icon(
+                status == 'attended'
+                    ? Icons.check_circle
+                    : Icons.cancel_outlined,
+                color: status == 'attended' ? _green : Colors.black45,
+              ),
       ),
     );
   }
@@ -705,7 +726,7 @@ class _BrandHeader extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: _green.withOpacity(.1),
+          color: _green.withValues(alpha: .1),
           borderRadius: BorderRadius.circular(14),
         ),
         child: const Icon(Icons.eco, color: _green),
@@ -836,16 +857,20 @@ class _Message extends StatelessWidget {
   final bool good;
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(top: 12),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: good ? const Color(0xFFE7F4E9) : const Color(0xFFFFEAE7),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Text(
-      text,
-      style: TextStyle(color: good ? _darkGreen : Colors.red.shade900),
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    container: true,
+    child: Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: good ? const Color(0xFFE7F4E9) : const Color(0xFFFFEAE7),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: good ? _darkGreen : Colors.red.shade900),
+      ),
     ),
   );
 }

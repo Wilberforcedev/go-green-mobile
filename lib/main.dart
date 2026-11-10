@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 part 'screens.dart';
@@ -15,14 +17,56 @@ const _supabaseConfigured = _supabaseUrl != '' && _supabaseAnonKey != '';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  String? startupError;
   if (_supabaseConfigured) {
-    await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+    final url = _supabaseUrl.trim();
+    final anonKey = _supabaseAnonKey.trim();
+    startupError = _configurationProblem(url, anonKey);
+    if (startupError == null) {
+      try {
+        await Supabase.initialize(url: url, anonKey: anonKey);
+      } catch (_) {
+        startupError =
+            'The app could not connect to its Supabase project. Check the '
+            'SUPABASE_URL and SUPABASE_ANON_KEY build values and try again.';
+      }
+    }
   }
-  runApp(const GoGreenApp());
+  runApp(GoGreenApp(startupError: startupError));
+}
+
+String? _configurationProblem(String url, String key) {
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+    return 'SUPABASE_URL must be a valid https project URL.';
+  }
+  if (key.isEmpty) {
+    return 'SUPABASE_ANON_KEY is missing.';
+  }
+  if (_isServiceRoleKey(key)) {
+    return 'SUPABASE_ANON_KEY must be the public anon key. Never ship the '
+        'service-role key inside a mobile app.';
+  }
+  return null;
+}
+
+bool _isServiceRoleKey(String key) {
+  final segments = key.split('.');
+  if (segments.length != 3) return false;
+  try {
+    final payload = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(segments[1]))),
+    );
+    return payload is Map && payload['role'] == 'service_role';
+  } catch (_) {
+    return false;
+  }
 }
 
 class GoGreenApp extends StatelessWidget {
-  const GoGreenApp({super.key});
+  const GoGreenApp({super.key, this.startupError});
+
+  final String? startupError;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -51,12 +95,15 @@ class GoGreenApp extends StatelessWidget {
         ),
       ),
     ),
-    home: const MainShell(),
+    home: MainShell(startupError: startupError),
   );
 }
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  const MainShell({super.key, this.startupError});
+
+  final String? startupError;
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -70,7 +117,7 @@ class _MainShellState extends State<MainShell> {
     final pages = <Widget>[
       const HomePage(),
       const CampaignsPage(),
-      ImpactHubPage(key: _hubKey),
+      ImpactHubPage(key: _hubKey, startupError: widget.startupError),
       const AboutPage(),
     ];
     return Scaffold(

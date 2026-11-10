@@ -1,6 +1,11 @@
 part of 'main.dart';
 
+const _requestTimeout = Duration(seconds: 20);
+
 String _friendlyAppError(Object error) {
+  if (error is TimeoutException) {
+    return 'The request took too long. Check your connection and try again.';
+  }
   if (error is AuthException) {
     final message = error.message.toLowerCase();
     if (message.contains('invalid login credentials')) {
@@ -14,9 +19,30 @@ String _friendlyAppError(Object error) {
     }
     return error.message;
   }
-  if (error is PostgrestException) return error.message;
+  if (error is PostgrestException) {
+    switch (error.code) {
+      case '23505':
+        return 'That action was already recorded.';
+      case '23503':
+        return 'The related record could not be found. Refresh and try again.';
+      case '42501':
+        return 'You do not have permission to do that.';
+    }
+    final message = error.message.trim();
+    if (message.isEmpty || message.length > 240) {
+      return 'The server could not complete that request. Please try again.';
+    }
+    return message;
+  }
   return 'Something went wrong. Check your connection and try again.';
 }
+
+String _statusLabel(Object? status) => switch ('$status') {
+  'registered' => 'Registered',
+  'attended' => 'Verified',
+  'cancelled' => 'Cancelled',
+  _ => '${status ?? 'Unknown'}',
+};
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -50,8 +76,8 @@ class HomePage extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        _darkGreen.withOpacity(.42),
-                        _darkGreen.withOpacity(.96),
+                        _darkGreen.withValues(alpha: .42),
+                        _darkGreen.withValues(alpha: .96),
                       ],
                     ),
                   ),
@@ -67,7 +93,7 @@ class HomePage extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(.16),
+                      color: Colors.white.withValues(alpha: .16),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(color: Colors.white24),
                     ),
@@ -250,7 +276,7 @@ class _HomePillar extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: _green.withOpacity(.09),
+              color: _green.withValues(alpha: .09),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Icon(icon, color: _green, size: 24),
@@ -415,13 +441,16 @@ class AboutPage extends StatelessWidget {
 }
 
 class ImpactHubPage extends StatefulWidget {
-  const ImpactHubPage({super.key});
+  const ImpactHubPage({super.key, this.startupError});
+
+  final String? startupError;
+
   @override
   State<ImpactHubPage> createState() => ImpactHubPageState();
 }
 
 class ImpactHubPageState extends State<ImpactHubPage> {
-  SupabaseClient? get _db => Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
   bool get _configured => _supabaseConfigured;
   StreamSubscription<AuthState>? _authSub;
   User? _user;
@@ -447,9 +476,9 @@ class ImpactHubPageState extends State<ImpactHubPage> {
   @override
   void initState() {
     super.initState();
-    if (_configured) {
-      _user = _db!.auth.currentUser;
-      _authSub = _db!.auth.onAuthStateChange.listen((event) {
+    if (_configured && widget.startupError == null) {
+      _user = _db.auth.currentUser;
+      _authSub = _db.auth.onAuthStateChange.listen((event) {
         if (!mounted) return;
         final nextUser = event.session?.user;
         final identityChanged = _user?.id != nextUser?.id;
@@ -462,6 +491,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
             _role = 'participant';
             _error = null;
             _notice = null;
+            _password.clear();
           }
         });
         refresh();
@@ -503,15 +533,29 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     });
     try {
       final results = await Future.wait([
-        _db!.from('activity_listing').select().order('starts_at'),
-        _db!
+        _db
+            .from('activity_listing')
+            .select()
+            .order('starts_at')
+            .timeout(_requestTimeout),
+        _db
             .from('activity_signups')
             .select(
               'id,activity_id,participant_id,status,created_at,activity:activities(title,starts_at,place,points),participant:profiles(display_name)',
             )
-            .order('created_at', ascending: false),
-        _db!.from('point_ledger').select('points').eq('participant_id', userId),
-        _db!.from('profiles').select('role').eq('id', userId).maybeSingle(),
+            .order('created_at', ascending: false)
+            .timeout(_requestTimeout),
+        _db
+            .from('point_ledger')
+            .select('points')
+            .eq('participant_id', userId)
+            .timeout(_requestTimeout),
+        _db
+            .from('profiles')
+            .select('role')
+            .eq('id', userId)
+            .maybeSingle()
+            .timeout(_requestTimeout),
       ]);
       if (!mounted || requestId != _refreshRequestId || _user?.id != userId) {
         return;
@@ -549,19 +593,28 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     });
     try {
       if (_creatingAccount) {
-        final response = await _db!.auth.signUp(
-          email: _email.text.trim(),
-          password: _password.text,
-          data: {'display_name': _name.text.trim()},
-        );
+        final response = await _db.auth
+            .signUp(
+              email: _email.text.trim(),
+              password: _password.text,
+              data: {'display_name': _name.text.trim()},
+            )
+            .timeout(_requestTimeout);
         if (response.session == null) {
           _notice = 'Check your email to confirm your account, then sign in.';
+        } else {
+          TextInput.finishAutofillContext();
+          _password.clear();
         }
       } else {
-        await _db!.auth.signInWithPassword(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
+        await _db.auth
+            .signInWithPassword(
+              email: _email.text.trim(),
+              password: _password.text,
+            )
+            .timeout(_requestTimeout);
+        TextInput.finishAutofillContext();
+        _password.clear();
       }
     } catch (e) {
       _error = _friendly(e);
@@ -594,7 +647,8 @@ class ImpactHubPageState extends State<ImpactHubPage> {
 
     setState(() => _working = true);
     try {
-      await _db!.auth.signOut();
+      await _db.auth.signOut().timeout(_requestTimeout);
+      _password.clear();
     } catch (e) {
       if (mounted) setState(() => _error = _friendly(e));
     } finally {
@@ -604,17 +658,20 @@ class ImpactHubPageState extends State<ImpactHubPage> {
 
   Future<void> _join(String activityId) async {
     await _run(() async {
-      await _db!.rpc('join_activity', params: {'activity_uuid': activityId});
-      _notice = 'You are registered. An organizer can confirm attendance after the activity.';
+      await _db
+          .rpc('join_activity', params: {'activity_uuid': activityId})
+          .timeout(_requestTimeout);
+      _notice =
+          'You are registered. An organizer can confirm attendance after the activity.';
     });
   }
 
   Future<void> _verify(String signupId) async {
     await _run(() async {
-      final points = await _db!.rpc(
-        'verify_attendance',
-        params: {'signup_uuid': signupId},
-      );
+      final result = await _db
+          .rpc('verify_attendance', params: {'signup_uuid': signupId})
+          .timeout(_requestTimeout);
+      final points = result is num ? result.toInt() : 0;
       _notice = 'Attendance verified. $points Green Points recorded.';
     });
   }
@@ -630,19 +687,22 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       await refresh();
     } catch (e) {
       if (mounted) setState(() => _error = _friendly(e));
+    } finally {
+      if (mounted) setState(() => _working = false);
     }
-    if (mounted) setState(() => _working = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.startupError != null) return _startupNotice();
     if (!_configured) return _setupNotice();
     if (_user == null) return _authPanel();
+    final query = _query.trim().toLowerCase();
     final visible = _activities.where((a) {
       final text =
           '${a['title']} ${a['description']} ${a['place']} ${a['category']}'
               .toLowerCase();
-      return text.contains(_query.toLowerCase()) &&
+      return text.contains(query) &&
           (_category == 'All activities' || a['category'] == _category);
     }).toList();
     final mine = _signups
@@ -663,6 +723,8 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       onRefresh: refresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 30),
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           _BrandHeader(),
           const SizedBox(height: 18),
@@ -752,7 +814,8 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: _category,
+            key: ValueKey(_category),
+            initialValue: _category,
             decoration: const InputDecoration(labelText: 'Category'),
             items: const [
               'All activities',
@@ -837,6 +900,30 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       ),
     );
   }
+
+  Widget _startupNotice() => ListView(
+    padding: const EdgeInsets.all(20),
+    children: [
+      const _BrandHeader(),
+      const SizedBox(height: 28),
+      const _SectionTitle(
+        'Impact Hub unavailable',
+        'The app could not start its connection to the shared Supabase project.',
+      ),
+      const SizedBox(height: 12),
+      _InfoCard(
+        icon: Icons.error_outline,
+        title: 'Fix the build configuration',
+        text: widget.startupError!,
+      ),
+      const _InfoCard(
+        icon: Icons.settings_outlined,
+        title: 'Where to look',
+        text:
+            'Rebuild with SUPABASE_URL and SUPABASE_ANON_KEY values from the website repository README. Use only the public anon key.',
+      ),
+    ],
+  );
 
   Widget _setupNotice() => ListView(
     padding: const EdgeInsets.all(20),

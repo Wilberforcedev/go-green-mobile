@@ -9,3 +9,16 @@ build/
 .vscode/
 *.iml
 .DS_Store
+
+# Local platform configuration and signing material
+android/local.properties
+android/key.properties
+**/*.jks
+**/*.keystore
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+
+# Tooling output
+coverage/
+build/symbols/
