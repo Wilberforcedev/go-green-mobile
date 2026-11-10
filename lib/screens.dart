@@ -563,7 +563,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         final response = await _db!.auth.signUp(
           email: _email.text.trim(),
           password: _password.text,
-          emailRedirectTo: _passwordRecoveryRedirect,
+          emailRedirectTo: _authRedirectUrl,
           data: {'display_name': _name.text.trim()},
         );
         if (response.session == null) {
@@ -601,7 +601,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     try {
       await _db!.auth.resetPasswordForEmail(
         email,
-        redirectTo: _passwordRecoveryRedirect,
+        redirectTo: _authRedirectUrl,
       );
       _notice =
           'If an account exists for this email, a password reset link has been sent.';
