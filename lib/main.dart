@@ -12,6 +12,7 @@ const _cream = Color(0xFFF6F8F4);
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 const _supabaseConfigured = _supabaseUrl != '' && _supabaseAnonKey != '';
+const _passwordRecoveryRedirect = 'io.supabase.flutter://reset-callback/';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
