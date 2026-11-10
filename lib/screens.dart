@@ -563,6 +563,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         final response = await _db!.auth.signUp(
           email: _email.text.trim(),
           password: _password.text,
+          emailRedirectTo: _passwordRecoveryRedirect,
           data: {'display_name': _name.text.trim()},
         );
         if (response.session == null) {
