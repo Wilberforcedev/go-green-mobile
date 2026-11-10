@@ -36,14 +36,13 @@ Commit the generated `pubspec.lock` after resolving dependencies so local and CI
 
 ## Checks
 
-The GitHub Actions workflow runs formatting checks, static analysis, widget tests and an Android debug APK build. The Android runner project is generated in CI because native platform directories are not currently checked into this repository.
+The GitHub Actions workflow runs static analysis, widget tests and an Android release-mode APK build. The Android runner project is generated in CI because native platform directories are not currently checked into this repository. The CI APK is a build smoke check; it is not signed for store submission.
 
 Run the same checks locally:
 
 ```sh
 flutter create --platforms=android .
 flutter pub get
-dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test --coverage
 flutter build apk --debug
