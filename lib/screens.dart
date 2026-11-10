@@ -464,7 +464,18 @@ class ImpactHubPageState extends State<ImpactHubPage> {
             _notice = null;
           }
         });
+        if (event.event == AuthChangeEvent.passwordRecovery) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            unawaited(_showPasswordRecoveryDialog());
+          });
+        }
         refresh();
+      }, onError: (Object error, StackTrace stackTrace) {
+        if (!mounted) return;
+        setState(() {
+          _error = _friendly(error);
+          _loading = false;
+        });
       });
       refresh();
     } else {
@@ -552,6 +563,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         final response = await _db!.auth.signUp(
           email: _email.text.trim(),
           password: _password.text,
+          emailRedirectTo: _authRedirectUrl,
           data: {'display_name': _name.text.trim()},
         );
         if (response.session == null) {
@@ -570,6 +582,130 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     }
   }
 
+  Future<void> _requestPasswordReset() async {
+    final email = _email.text.trim();
+    final validEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+    if (!validEmail) {
+      setState(() {
+        _error = 'Enter a valid email address to reset your password.';
+        _notice = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _working = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await _db!.auth.resetPasswordForEmail(
+        email,
+        redirectTo: _authRedirectUrl,
+      );
+      _notice =
+          'If an account exists for this email, a password reset link has been sent.';
+    } catch (e) {
+      _error = _friendly(e);
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _showPasswordRecoveryDialog() async {
+    final password = TextEditingController();
+    final confirmPassword = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var saving = false;
+    String? submitError;
+
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Set a new password'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: password,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'New password'),
+                    validator: (value) => value == null || value.length < 8
+                        ? 'Use at least 8 characters.'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: confirmPassword,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Confirm password'),
+                    validator: (value) => value != password.text
+                        ? 'The passwords do not match.'
+                        : null,
+                  ),
+                  if (submitError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          submitError!,
+                          style: TextStyle(
+                            color: Theme.of(dialogContext).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setDialogState(() {
+                          saving = true;
+                          submitError = null;
+                        });
+                        try {
+                          await _db!.auth.updateUser(
+                            UserAttributes(password: password.text),
+                          );
+                          if (!mounted) return;
+                          Navigator.of(dialogContext).pop();
+                          setState(() => _notice = 'Your password has been updated.');
+                        } catch (e) {
+                          if (dialogContext.mounted) {
+                            setDialogState(() => submitError = _friendly(e));
+                          }
+                        } finally {
+                          if (dialogContext.mounted) {
+                            setDialogState(() => saving = false);
+                          }
+                        }
+                      },
+                child: Text(saving ? 'Updating…' : 'Update password'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      password.dispose();
+      confirmPassword.dispose();
+    }
+  }
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -845,7 +981,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       SizedBox(height: 28),
       _SectionTitle(
         'Impact Hub setup needed',
-        'Connect the app to the shared Go Green Mates Supabase project.',
+        'Configure the Supabase backend and apply this repository's migration.',
       ),
       SizedBox(height: 12),
       _InfoCard(
@@ -948,6 +1084,14 @@ class ImpactHubPageState extends State<ImpactHubPage> {
                   ),
                 ),
               ),
+              if (!_creatingAccount)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _working ? null : _requestPasswordReset,
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
               TextButton(
                 onPressed: _working
                     ? null

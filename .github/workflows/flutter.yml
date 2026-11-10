@@ -1,16 +1,54 @@
-name: Flutter checks
+name: Flutter and Supabase checks
+
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
-  analyze-and-test:
+  flutter:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-      - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test --coverage
+
+      - name: Generate Android runner
+        run: flutter create --platforms=android .
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test --coverage
+
+      - name: Build Android release APK
+        run: flutter build apk --release
+
+  supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Apply and validate migrations
+        run: supabase db reset
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
