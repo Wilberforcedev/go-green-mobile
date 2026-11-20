@@ -68,7 +68,7 @@ supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 ```
 
-For local development, use `supabase start`, then `supabase db reset`. The reset command rebuilds the local database from migrations. New accounts receive the participant role. Organizer promotion currently requires an authorized operator; never grant roles from the mobile client.
+For local development, use `supabase start`, then `supabase db reset`. The reset command rebuilds the local database from migrations. New accounts receive the participant role. Organizer promotion currently requires an authorized operator; never grant roles from the mobile client. Organizers can cancel their own future activities, and participants can cancel their future registrations; the database enforces both permissions and timing.
 
 The mobile app uses the public anon/publishable key only. Account confirmation and password recovery redirect to `io.supabase.flutter://reset-callback/`; allowlist that URI in Supabase Auth and register the scheme in generated Android/iOS projects before testing those flows.
 
