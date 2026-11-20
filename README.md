@@ -29,7 +29,7 @@ generated Android and iOS runners.
 flutter pub get
 flutter run \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 ```
 
 Commit the generated `pubspec.lock` after the first successful dependency
@@ -41,10 +41,11 @@ shows the configuration problem in the Impact Hub instead of crashing.
 
 ## Security and configuration
 
-- Use only the Supabase **public anon/publishable key** in the mobile app.
-  Never bundle the service-role key. At startup the app decodes the key and
-  refuses to connect if it detects the `service_role` claim.
-- `SUPABASE_URL` must be an `https://` project URL.
+- Use the Supabase **publishable key** in the mobile app. A legacy anon key is
+  also accepted for existing projects. Never bundle a secret or service-role
+  key; startup rejects those key formats.
+- `SUPABASE_URL` must be an `https://` project URL. Pass the publishable key
+  as `SUPABASE_PUBLISHABLE_KEY`; `SUPABASE_ANON_KEY` remains a legacy fallback.
 - Authentication, role permissions, capacity limits, attendance verification,
   and point calculations are enforced by Supabase row-level security and RPC
   functions. The app never calculates points locally.
@@ -119,7 +120,7 @@ check Android compilation. The artifact is not store-signed.
      --build-name=1.0.0 --build-number=2 \
      --obfuscate --split-debug-info=build/symbols \
      --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-     --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+     --dart-define=SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
    ```
 
 5. Verify the build on a physical device before submitting to the store.
