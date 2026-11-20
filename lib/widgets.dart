@@ -508,14 +508,18 @@ class _ActivityCard extends StatelessWidget {
     required this.signedUp,
     required this.role,
     required this.busy,
+    required this.isOrganizerOwned,
     required this.onJoin,
+    required this.onCancel,
   });
 
   final Map<String, dynamic> activity;
   final bool signedUp;
   final String role;
   final bool busy;
+  final bool isOrganizerOwned;
   final VoidCallback onJoin;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -627,6 +631,17 @@ class _ActivityCard extends StatelessWidget {
                     child: Text(joinLabel),
                   ),
                 ),
+                if (isOrganizerOwned && hasNotStarted) ...[
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: busy ? null : onCancel,
+                      icon: const Icon(Icons.event_busy),
+                      label: const Text('Cancel activity'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -637,9 +652,15 @@ class _ActivityCard extends StatelessWidget {
 }
 
 class _SignupCard extends StatelessWidget {
-  const _SignupCard({required this.signup});
+  const _SignupCard({
+    required this.signup,
+    required this.busy,
+    required this.onCancel,
+  });
 
   final Map<String, dynamic> signup;
+  final bool busy;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -661,13 +682,29 @@ class _SignupCard extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text('${activity['place'] ?? ''}$dateTime'),
-        trailing: Text(
-          attended
-              ? 'Verified\n+${activity['points'] ?? 0}'
-              : _statusLabel(signup['status']),
-          textAlign: TextAlign.end,
-          style: const TextStyle(color: _green, fontWeight: FontWeight.w700),
-        ),
+        trailing: signup['status'] == 'registered' &&
+                date != null &&
+                date.isAfter(DateTime.now()) &&
+                activity['status'] != 'cancelled'
+            ? IconButton(
+                onPressed: busy ? null : onCancel,
+                tooltip: 'Cancel registration',
+                icon: const Icon(Icons.event_busy, color: Colors.black54),
+              )
+            : Text(
+                activity['status'] == 'cancelled'
+                    ? 'Activity cancelled'
+                    : attended
+                        ? 'Verified\\n+${activity['points'] ?? 0}'
+                        : _statusLabel(signup['status']),
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  color: activity['status'] == 'cancelled'
+                      ? Colors.black54
+                      : _green,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
       ),
     );
   }
