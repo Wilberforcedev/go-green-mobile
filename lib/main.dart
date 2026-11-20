@@ -13,19 +13,23 @@ const _green = Color(0xFF17633E);
 const _darkGreen = Color(0xFF123C2C);
 const _cream = Color(0xFFF6F8F4);
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-const _supabaseConfigured = _supabaseUrl != '' && _supabaseAnonKey != '';
+const _supabasePublicKey = String.fromEnvironment(
+  'SUPABASE_PUBLISHABLE_KEY',
+  defaultValue: String.fromEnvironment('SUPABASE_ANON_KEY'),
+);
+const _supabaseConfigured =
+    _supabaseUrl != '' && _supabasePublicKey != '';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   String? startupError;
   if (_supabaseConfigured) {
     final url = _supabaseUrl.trim();
-    final anonKey = _supabaseAnonKey.trim();
-    startupError = _configurationProblem(url, anonKey);
+    final publicKey = _supabasePublicKey.trim();
+    startupError = _configurationProblem(url, publicKey);
     if (startupError == null) {
       try {
-        await Supabase.initialize(url: url, anonKey: anonKey);
+        await Supabase.initialize(url: url, publishableKey: publicKey);
       } catch (_) {
         startupError =
             'The app could not connect to its Supabase project. Check the '
@@ -42,23 +46,28 @@ String? _configurationProblem(String url, String key) {
     return 'SUPABASE_URL must be a valid https project URL.';
   }
   if (key.isEmpty) {
-    return 'SUPABASE_ANON_KEY is missing.';
+    return 'SUPABASE_PUBLISHABLE_KEY is missing.';
   }
-  if (_isServiceRoleKey(key)) {
-    return 'SUPABASE_ANON_KEY must be the public anon key. Never ship the '
-        'service-role key inside a mobile app.';
+  if (!_isPublicSupabaseKey(key)) {
+    return 'Use a Supabase publishable key or legacy anon key. Never ship a '
+        'secret or service-role key inside a mobile app.';
   }
   return null;
 }
 
-bool _isServiceRoleKey(String key) {
+bool _isPublicSupabaseKey(String key) {
+  if (key.startsWith('sb_publishable_')) {
+    return key.length > 'sb_publishable_'.length;
+  }
+  if (key.startsWith('sb_secret_')) return false;
+
   final segments = key.split('.');
   if (segments.length != 3) return false;
   try {
     final payload = jsonDecode(
       utf8.decode(base64Url.decode(base64Url.normalize(segments[1]))),
     );
-    return payload is Map && payload['role'] == 'service_role';
+    return payload is Map && payload['role'] == 'anon';
   } catch (_) {
     return false;
   }
