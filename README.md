@@ -1,14 +1,15 @@
 # Go Green Mates mobile app
 
 A Flutter mobile client for the Go Green Mates community. It includes Home,
-Campaigns, Impact Hub, and About tabs. The Impact Hub uses the same Supabase
-project and database as the website for accounts, activity listings, sign-ups,
-organizer verification, and server-recorded Green Points.
+Campaigns, Impact Hub, and About tabs. The Impact Hub uses this repository's Supabase backend for participant accounts,
+activity listings, sign-ups, organizer verification, and server-recorded Green
+Points. The companion website remains a separate browser-local prototype; its
+data do not sync with this app.
 
 ## Requirements
 
 - Flutter 3.35.4 or newer (Dart 3.9+)
-- The Supabase project and database migration from the website repository
+- A Supabase project for live Impact Hub data; this repository includes its migration
 - Android SDK for Android builds; macOS and Xcode for iOS builds
 
 The platform runner projects (`android/`, `ios/`) are not checked in. Generate
@@ -61,6 +62,19 @@ flutter test
 CI runs analysis and widget tests on every push and pull request. It also
 generates an Android runner and builds a release-mode APK smoke artifact to
 check Android compilation. The artifact is not store-signed.
+
+## Supabase backend
+
+Apply this repository's migrations to a dedicated Supabase project before connecting real users. For local checks, run:
+
+```sh
+supabase start
+supabase db reset
+supabase test db
+supabase stop
+```
+
+New accounts default to the participant role. Role promotion remains an operator action; never grant roles from the mobile client. Organizers can cancel their own future activities, and participants can cancel future registrations; server-side functions enforce permissions and start-time limits. Account deletion and retention policy for organizer-owned activities and participation history still need to be defined before real users are onboarded.
 
 ## Production release
 

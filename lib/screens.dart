@@ -546,7 +546,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         _db
             .from('activity_signups')
             .select(
-              'id,activity_id,participant_id,status,created_at,activity:activities(title,starts_at,place,points),participant:profiles(display_name)',
+              'id,activity_id,participant_id,status,created_at,activity:activities(title,starts_at,place,points,status),participant:profiles(display_name)',
             )
             .order('created_at', ascending: false)
             .timeout(_requestTimeout),
@@ -679,6 +679,53 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           .timeout(_requestTimeout);
       final points = result is num ? result.toInt() : 0;
       _notice = 'Attendance verified. $points Green Points recorded.';
+    });
+  }
+
+  Future<bool> _confirmAction(String title, String message) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Keep'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Confirm'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _cancelSignup(String signupId) async {
+    if (!await _confirmAction(
+      'Cancel registration?',
+      'Your place will be released to another participant.',
+    )) return;
+    await _run(() async {
+      await _db
+          .rpc('cancel_activity_signup', params: {'signup_uuid': signupId})
+          .timeout(_requestTimeout);
+      _notice = 'Your registration has been cancelled.';
+    });
+  }
+
+  Future<void> _cancelActivity(String activityId) async {
+    if (!await _confirmAction(
+      'Cancel this activity?',
+      'It will be removed from the published activities list.',
+    )) return;
+    await _run(() async {
+      await _db
+          .rpc('cancel_activity', params: {'activity_uuid': activityId})
+          .timeout(_requestTimeout);
+      _notice = 'The activity has been cancelled.';
     });
   }
 
@@ -870,14 +917,22 @@ class ImpactHubPageState extends State<ImpactHubPage> {
               ),
               role: _role,
               busy: _working,
+              isOrganizerOwned:
+                  _role == 'admin' || activity['organizer_id'] == _user!.id,
               onJoin: () => _join(activity['id'] as String),
+              onCancel: () => _cancelActivity(activity['id'] as String),
             ),
           const SizedBox(height: 14),
           const _SectionTitle(
             'My activity',
             'Your sign-ups and verified participation.',
           ),
-          for (final signup in mine) _SignupCard(signup: signup),
+          for (final signup in mine)
+            _SignupCard(
+              signup: signup,
+              busy: _working,
+              onCancel: () => _cancelSignup(signup['id'] as String),
+            ),
           if (mine.isEmpty)
             const _InfoCard(
               icon: Icons.event_available,

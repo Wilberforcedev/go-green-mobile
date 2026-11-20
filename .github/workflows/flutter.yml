@@ -45,9 +45,8 @@ jobs:
           flutter-version: '3.35.4'
           cache: true
       - run: flutter pub get
-      # Runner projects are generated locally; this verifies the app compiles
-      # for Android without checking generated files into the repository.
-      - run: flutter create --platforms=android --project-name grinmates_mobile .
+      # Generate both platform runners and configure the Supabase callback scheme.
+      - run: sh tool/bootstrap_platforms.sh
       - name: Verify release manifest keeps network access
         run: grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
       - run: flutter build apk --release
@@ -56,3 +55,21 @@ jobs:
           name: android-release-smoke-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
+
+  supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase
+        run: supabase start
+      - name: Apply migrations and run database tests
+        run: |
+          supabase db reset
+          supabase test db
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
