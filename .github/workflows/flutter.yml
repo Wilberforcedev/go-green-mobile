@@ -29,7 +29,7 @@ jobs:
       - name: Run tests
         run: flutter test --coverage
       - name: Generate Android runner
-        run: flutter create --platforms=android --project-name grinmates_mobile .
+        run: sh tool/bootstrap_platforms.sh
       - name: Verify release network permission
         run: grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
       - name: Build Android release APK
