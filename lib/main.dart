@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 part 'screens.dart';
+part 'password_recovery.dart';
 part 'widgets.dart';
 
 const _green = Color(0xFF17633E);
