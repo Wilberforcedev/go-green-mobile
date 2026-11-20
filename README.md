@@ -19,8 +19,9 @@ sh tool/bootstrap_platforms.sh
 ```
 
 The script runs `flutter create --platforms=android,ios --project-name
-grinmates_mobile .` and preserves existing files, including the committed
-Android manifest override.
+grinmates_mobile .`, preserves existing files, including the committed
+Android manifest override, and registers the Supabase callback scheme in the
+generated Android and iOS runners.
 
 ## Run
 
@@ -56,8 +57,9 @@ flutter analyze
 flutter test
 ```
 
-CI runs both on every push and pull request, then generates an Android runner
-and builds a debug APK to verify the app compiles for Android.
+CI runs analysis and widget tests on every push and pull request. It also
+generates an Android runner and builds a release-mode APK smoke artifact to
+check Android compilation. The artifact is not store-signed.
 
 ## Production release
 
@@ -137,9 +139,10 @@ ever regenerated with `--overwrite`, re-add the permission.
 ## Operational notes
 
 - New accounts may require email confirmation before first sign-in. Email
-  confirmation and password recovery use Supabase's hosted email flows;
-  configure the project's site URL and redirect URLs in the Supabase dashboard
-  before launch.
+  confirmation and password recovery use Supabase's hosted email flows. The
+  app returns to `io.supabase.flutter://reset-callback/`; run the platform
+  bootstrap script and add that exact URI to Supabase Auth's redirect allowlist
+  before launch. Verify the link flow on Android and iOS devices.
 - Organizers publish activities and verify attendance; points are written by
   the `verify_attendance` RPC and read from the `point_ledger` table.
 - Green Points have no cash value.
