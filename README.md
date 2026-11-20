@@ -59,6 +59,25 @@ flutter test
 CI runs both on every push and pull request, then generates an Android runner
 and builds a debug APK to verify the app compiles for Android.
 
+## Supabase Impact Hub
+
+The mobile Impact Hub schema is versioned in `supabase/migrations`. Apply it to a dedicated Supabase project only after reviewing the migration:
+
+```sh
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+```
+
+For local development, use `supabase start`, then `supabase db reset`. The reset command rebuilds the local database from migrations. New accounts receive the participant role. Organizer promotion currently requires an authorized operator; never grant roles from the mobile client.
+
+The mobile app uses the public anon/publishable key only. Account confirmation and password recovery redirect to `io.supabase.flutter://reset-callback/`; allowlist that URI in Supabase Auth and register the scheme in generated Android/iOS projects before testing those flows.
+
+The companion website remains a separate browser-local prototype; its Impact Hub data do not sync with this mobile backend.
+
+## Production data operations
+
+Before real users are onboarded, define account deletion and retention rules, including how organizer-owned activities and attendance/points history are handled. Do not delete production records manually until that policy is approved.
+
 ## Production release
 
 1. Generate the platform runners and set a real application id (for example
