@@ -147,13 +147,13 @@ select throws_ok(
   'a participant cannot cancel another participant registration'
 );
 select throws_ok(
-  $select public.verify_attendance('33333333-3333-4333-8333-333333333331')$,
+  $q$select public.verify_attendance('33333333-3333-4333-8333-333333333331')$q$,
   '42501',
   'You cannot verify this activity.',
   'a participant cannot verify attendance'
 );
 select throws_ok(
-  $select public.cancel_activity('22222222-2222-4222-8222-222222222221')$,
+  $q$select public.cancel_activity('22222222-2222-4222-8222-222222222221')$q$,
   '42501',
   'You cannot cancel this activity.',
   'a participant cannot cancel an organizer activity'
@@ -175,7 +175,7 @@ select is(
   'repeating verification returns the original award'
 );
 select lives_ok(
-  $select public.cancel_activity('22222222-2222-4222-8222-222222222221')$,
+  $q$select public.cancel_activity('22222222-2222-4222-8222-222222222221')$q$,
   'the organizer can cancel their future activity'
 );
 select is(
@@ -190,7 +190,7 @@ select set_config(
   true
 );
 select throws_ok(
-  $select public.join_activity('22222222-2222-4222-8222-222222222221')$,
+  $q$select public.join_activity('22222222-2222-4222-8222-222222222221')$q$,
   'P0002',
   'This activity is not available.',
   'participants cannot join a cancelled activity'
