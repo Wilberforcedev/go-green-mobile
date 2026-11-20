@@ -33,7 +33,7 @@ Future<void> main() async {
       } catch (_) {
         startupError =
             'The app could not connect to its Supabase project. Check the '
-            'SUPABASE_URL and SUPABASE_ANON_KEY build values and try again.';
+            'SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY build values and try again.';
       }
     }
   }
