@@ -1,6 +1,6 @@
 begin;
 
-select plan(33);
+select plan(40);
 
 select has_function('public', 'cancel_activity_signup', array['uuid'], 'participant cancellation RPC exists');
 select has_function('public', 'cancel_activity', array['uuid'], 'organizer cancellation RPC exists');
@@ -46,6 +46,11 @@ insert into public.activities (
    '11111111-1111-4111-8111-111111111113',
    'Past test activity', 'Clean-ups', 'Test Park', now() - interval '2 days',
    5, 25, 'A valid past activity for attendance verification tests.',
+   'Bags collected', 'published'),
+  ('22222222-2222-4222-8222-222222222223',
+   '11111111-1111-4111-8111-111111111113',
+   'Capacity check activity', 'Clean-ups', 'Test Park', now() + interval '2 days',
+   2, 25, 'A valid future activity for capacity edit tests.',
    'Bags collected', 'published');
 
 insert into public.activity_signups (
@@ -55,10 +60,42 @@ insert into public.activity_signups (
   '22222222-2222-4222-8222-222222222222',
   '11111111-1111-4111-8111-111111111112',
   'registered'
+), (
+  '33333333-3333-4333-8333-333333333332',
+  '22222222-2222-4222-8222-222222222223',
+  '11111111-1111-4111-8111-111111111111',
+  'registered'
+), (
+  '33333333-3333-4333-8333-333333333333',
+  '22222222-2222-4222-8222-222222222223',
+  '11111111-1111-4111-8111-111111111112',
+  'registered'
 );
 
 select has_function('public', 'join_activity', array['uuid'], 'join RPC exists');
 select has_function('public', 'verify_attendance', array['uuid'], 'attendance RPC exists');
+select has_function(
+  'public',
+  'update_activity',
+  array['uuid', 'text', 'text', 'text', 'timestamptz', 'integer', 'integer', 'text', 'text', 'text'],
+  'activity update RPC exists'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.update_activity(uuid,text,text,text,timestamptz,integer,integer,text,text,text)',
+    'EXECUTE'
+  ),
+  'anonymous users cannot edit activities'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.update_activity(uuid,text,text,text,timestamptz,integer,integer,text,text,text)',
+    'EXECUTE'
+  ),
+  'authenticated users can call the guarded activity update RPC'
+);
 select ok(
   position(
     'FOR UPDATE' in upper(pg_get_functiondef('public.join_activity(uuid)'::regprocedure))
@@ -153,6 +190,23 @@ select throws_ok(
   'a participant cannot verify attendance'
 );
 select throws_ok(
+  $select public.update_activity(
+    '22222222-2222-4222-8222-222222222221',
+    'Updated future test activity',
+    'Tree planting',
+    'Updated Test Garden',
+    now() + interval '3 days',
+    1,
+    0,
+    'A valid future activity for database integration tests.',
+    'Trees planted',
+    null
+  )$,
+  '42501',
+  'You cannot edit this activity.',
+  'a participant cannot edit an organizer activity'
+);
+select throws_ok(
   $q$select public.cancel_activity('22222222-2222-4222-8222-222222222221')$q$,
   '42501',
   'You cannot cancel this activity.',
@@ -163,6 +217,44 @@ select set_config(
   'request.jwt.claims',
   '{"sub":"11111111-1111-4111-8111-111111111113","role":"authenticated"}',
   true
+);
+select lives_ok(
+  $select public.update_activity(
+    '22222222-2222-4222-8222-222222222221',
+    'Updated future test activity',
+    'Tree planting',
+    'Updated Test Garden',
+    now() + interval '3 days',
+    1,
+    0,
+    'A valid future activity for database integration tests.',
+    'Trees planted',
+    null
+  )$,
+  'the organizer can edit their future activity'
+);
+select is(
+  (select title from public.activities
+   where id = '22222222-2222-4222-8222-222222222221'),
+  'Updated future test activity',
+  'activity edits are saved'
+);
+select throws_ok(
+  $select public.update_activity(
+    '22222222-2222-4222-8222-222222222223',
+    'Capacity check activity',
+    'Clean-ups',
+    'Test Park',
+    now() + interval '3 days',
+    1,
+    25,
+    'A valid future activity for capacity edit tests.',
+    'Bags collected',
+    null
+  )$,
+  '23514',
+  'Activity capacity cannot be less than current registrations.',
+  'an organizer cannot lower capacity below active registrations'
 );
 select is(
   public.verify_attendance('33333333-3333-4333-8333-333333333331'),
