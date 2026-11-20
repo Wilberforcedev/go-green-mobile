@@ -1,6 +1,6 @@
 begin;
 
-select plan(29);
+select plan(33);
 
 select has_function('public', 'cancel_activity_signup', array['uuid'], 'participant cancellation RPC exists');
 select has_function('public', 'cancel_activity', array['uuid'], 'organizer cancellation RPC exists');
@@ -147,10 +147,16 @@ select throws_ok(
   'a participant cannot cancel another participant registration'
 );
 select throws_ok(
-  $$select public.verify_attendance('33333333-3333-4333-8333-333333333331')$$,
+  $select public.verify_attendance('33333333-3333-4333-8333-333333333331')$,
   '42501',
   'You cannot verify this activity.',
   'a participant cannot verify attendance'
+);
+select throws_ok(
+  $select public.cancel_activity('22222222-2222-4222-8222-222222222221')$,
+  '42501',
+  'You cannot cancel this activity.',
+  'a participant cannot cancel an organizer activity'
 );
 
 select set_config(
@@ -167,6 +173,27 @@ select is(
   public.verify_attendance('33333333-3333-4333-8333-333333333331'),
   25,
   'repeating verification returns the original award'
+);
+select lives_ok(
+  $select public.cancel_activity('22222222-2222-4222-8222-222222222221')$,
+  'the organizer can cancel their future activity'
+);
+select is(
+  (select status from public.activities
+   where id = '22222222-2222-4222-8222-222222222221'),
+  'cancelled',
+  'organizer cancellation updates the activity status'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}',
+  true
+);
+select throws_ok(
+  $select public.join_activity('22222222-2222-4222-8222-222222222221')$,
+  'P0002',
+  'This activity is not available.',
+  'participants cannot join a cancelled activity'
 );
 reset role;
 
