@@ -695,7 +695,7 @@ class _SignupCard extends StatelessWidget {
                 activity['status'] == 'cancelled'
                     ? 'Activity cancelled'
                     : attended
-                        ? 'Verified\\n+${activity['points'] ?? 0}'
+                        ? 'Verified\n+${activity['points'] ?? 0}'
                         : _statusLabel(signup['status']),
                 textAlign: TextAlign.end,
                 style: TextStyle(
