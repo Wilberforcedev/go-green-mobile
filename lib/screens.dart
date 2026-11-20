@@ -926,7 +926,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         icon: Icons.settings_outlined,
         title: 'Where to look',
         text:
-            'Rebuild with SUPABASE_URL and SUPABASE_ANON_KEY values from the website repository README. Use only the public anon key.',
+            'Rebuild with SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY values from the README. Use only a publishable or legacy anon key.',
       ),
     ],
   );
@@ -944,7 +944,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       _InfoCard(
         icon: Icons.settings_outlined,
         title: 'Add Supabase configuration',
-        text: 'See README.md for SUPABASE_URL and SUPABASE_ANON_KEY setup. Use only the public anon key in the app.',
+        text: 'See README.md for SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY setup. Use only a publishable or legacy anon key in the app.',
       ),
     ],
   );
