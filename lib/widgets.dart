@@ -457,6 +457,243 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
   );
 }
 
+class _EditActivityDialog extends StatefulWidget {
+  const _EditActivityDialog({required this.activity});
+
+  final Map<String, dynamic> activity;
+
+  @override
+  State<_EditActivityDialog> createState() => _EditActivityDialogState();
+}
+
+class _EditActivityDialogState extends State<_EditActivityDialog> {
+  final _form = GlobalKey<FormState>();
+  late final TextEditingController _title;
+  late final TextEditingController _place;
+  late final TextEditingController _description;
+  late final TextEditingController _impact;
+  late final TextEditingController _source;
+  late String _category;
+  late DateTime _starts;
+  late int _capacity;
+  late int _points;
+  String? _startError;
+
+  @override
+  void initState() {
+    super.initState();
+    final activity = widget.activity;
+    _title = TextEditingController(text: '${activity['title'] ?? ''}');
+    _place = TextEditingController(text: '${activity['place'] ?? ''}');
+    _description = TextEditingController(
+      text: '${activity['description'] ?? ''}',
+    );
+    _impact = TextEditingController(
+      text: '${activity['impact_measure'] ?? ''}',
+    );
+    _source = TextEditingController(
+      text: '${activity['impact_source_url'] ?? ''}',
+    );
+    _category = '${activity['category'] ?? 'Tree planting'}';
+    _starts = DateTime.tryParse('${activity['starts_at'] ?? ''}')?.toLocal() ??
+        DateTime.now().add(const Duration(days: 1));
+    _capacity = (activity['capacity'] as num?)?.toInt() ?? 20;
+    _points = (activity['points'] as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _place.dispose();
+    _description.dispose();
+    _impact.dispose();
+    _source.dispose();
+    super.dispose();
+  }
+
+  Future<void> _chooseStart() async {
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year, now.month, now.day + 1);
+    final initialDate = _starts.isBefore(firstDate) ? firstDate : _starts;
+    final date = await showDatePicker(
+      context: context,
+      firstDate: firstDate,
+      lastDate: DateTime(now.year + 2, now.month, now.day),
+      initialDate: initialDate,
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_starts),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _starts = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+      _startError = null;
+    });
+  }
+
+  void _save() {
+    if (!_form.currentState!.validate()) return;
+    final source = _source.text.trim();
+    Navigator.of(context).pop(<String, dynamic>{
+      'title': _title.text.trim(),
+      'category': _category,
+      'place': _place.text.trim(),
+      'starts_at': _starts.toUtc().toIso8601String(),
+      'capacity': _capacity,
+      'points': _points,
+      'description': _description.text.trim(),
+      'impact_measure': _impact.text.trim(),
+      'impact_source_url': source.isEmpty ? null : source,
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Edit activity'),
+    content: SizedBox(
+      width: 480,
+      child: Form(
+        key: _form,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _title,
+                decoration: const InputDecoration(labelText: 'Activity title'),
+                validator: (value) =>
+                    value == null || value.trim().length < 5
+                    ? 'Enter at least 5 characters'
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                key: ValueKey(_category),
+                initialValue: _category,
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: const [
+                  'Tree planting',
+                  'Clean-ups',
+                  'Learning',
+                  'Clean energy',
+                ].map((value) => DropdownMenuItem(
+                  value: value,
+                  child: Text(value),
+                )).toList(),
+                onChanged: (value) =>
+                    setState(() => _category = value ?? _category),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _place,
+                decoration: const InputDecoration(labelText: 'Place'),
+                validator: (value) =>
+                    value == null || value.trim().length < 2
+                    ? 'Enter a place'
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _description,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Description'),
+                validator: (value) =>
+                    value == null || value.trim().length < 20
+                    ? 'Add at least 20 characters'
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _impact,
+                decoration: const InputDecoration(labelText: 'Impact measure'),
+                validator: (value) =>
+                    value == null || value.trim().length < 3
+                    ? 'Describe the measure'
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _source,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  labelText: 'Impact source URL (optional)',
+                  hintText: 'https://…',
+                ),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) return null;
+                  final uri = Uri.tryParse(text);
+                  return uri == null || uri.scheme != 'https'
+                      ? 'Use an https URL'
+                      : null;
+                },
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _chooseStart,
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(_displayDateTime(context, _starts)),
+                ),
+              ),
+              if (_startError != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _startError!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StepperField(
+                      label: 'Capacity',
+                      value: _capacity,
+                      min: 1,
+                      max: 5000,
+                      onChanged: (value) => setState(() => _capacity = value),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StepperField(
+                      label: 'Points',
+                      value: _points,
+                      min: 0,
+                      max: 10000,
+                      onChanged: (value) => setState(() => _points = value),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Keep current details'),
+      ),
+      FilledButton(
+        onPressed: _save,
+        child: const Text('Save changes'),
+      ),
+    ],
+  );
+}
+
 class _StepperField extends StatelessWidget {
   const _StepperField({
     required this.label,
@@ -510,6 +747,7 @@ class _ActivityCard extends StatelessWidget {
     required this.busy,
     required this.isOrganizerOwned,
     required this.onJoin,
+    required this.onEdit,
     required this.onCancel,
   });
 
@@ -519,6 +757,7 @@ class _ActivityCard extends StatelessWidget {
   final bool busy;
   final bool isOrganizerOwned;
   final VoidCallback onJoin;
+  final VoidCallback onEdit;
   final VoidCallback onCancel;
 
   @override
@@ -633,13 +872,21 @@ class _ActivityCard extends StatelessWidget {
                 ),
                 if (isOrganizerOwned && hasNotStarted) ...[
                   const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: busy ? null : onCancel,
-                      icon: const Icon(Icons.event_busy),
-                      label: const Text('Cancel activity'),
-                    ),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 4,
+                    children: [
+                      TextButton.icon(
+                        onPressed: busy ? null : onEdit,
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit activity'),
+                      ),
+                      TextButton.icon(
+                        onPressed: busy ? null : onCancel,
+                        icon: const Icon(Icons.event_busy),
+                        label: const Text('Cancel activity'),
+                      ),
+                    ],
                   ),
                 ],
               ],
