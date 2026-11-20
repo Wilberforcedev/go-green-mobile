@@ -500,6 +500,12 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           });
         }
         refresh();
+      }, onError: (Object error, StackTrace stackTrace) {
+        if (!mounted) return;
+        setState(() {
+          _error = _friendly(error);
+          _loading = false;
+        });
       });
       refresh();
     } else {
