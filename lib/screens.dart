@@ -494,6 +494,11 @@ class ImpactHubPageState extends State<ImpactHubPage> {
             _password.clear();
           }
         });
+        if (event.event == AuthChangeEvent.passwordRecovery) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) unawaited(this.showPasswordRecoveryDialog());
+          });
+        }
         refresh();
       });
       refresh();
@@ -597,6 +602,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
             .signUp(
               email: _email.text.trim(),
               password: _password.text,
+              emailRedirectTo: _authRedirectUrl,
               data: {'display_name': _name.text.trim()},
             )
             .timeout(_requestTimeout);
@@ -1035,6 +1041,14 @@ class ImpactHubPageState extends State<ImpactHubPage> {
                   ),
                 ),
               ),
+              if (!_creatingAccount)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _working ? null : this.requestPasswordReset,
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
               TextButton(
                 onPressed: _working
                     ? null
