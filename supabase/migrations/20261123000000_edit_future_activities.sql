@@ -48,10 +48,11 @@ begin
 
   if new_starts_at is null or new_starts_at <= now()
      or char_length(trim(coalesce(new_title, ''))) not between 5 and 140
+     or new_category is null
      or new_category not in ('Tree planting', 'Clean-ups', 'Learning', 'Clean energy')
      or char_length(trim(coalesce(new_place, ''))) not between 2 and 160
-     or new_capacity not between 1 and 5000
-     or new_points not between 0 and 10000
+     or new_capacity is null or new_capacity not between 1 and 5000
+     or new_points is null or new_points not between 0 and 10000
      or char_length(trim(coalesce(new_description, ''))) not between 20 and 3000
      or char_length(trim(coalesce(new_impact_measure, ''))) not between 3 and 300
      or (new_impact_source_url is not null and new_impact_source_url not like 'https://%') then
