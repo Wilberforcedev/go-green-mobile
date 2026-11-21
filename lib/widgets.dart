@@ -771,36 +771,38 @@ class _AdminAccessToolsState extends State<_AdminAccessTools> {
                 ? 'Organizer'
                 : 'Participant',
       ),
-      trailing: role == 'admin'
-          ? const Text('Protected')
-          : saving
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : DropdownButton<String>(
-                  value: role,
-                  underline: const SizedBox.shrink(),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'participant',
-                      child: Text('Participant'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'organizer',
-                      child: Text('Organizer'),
-                    ),
-                  ],
-                  onChanged: _savingId != null
-                      ? null
-                      : (nextRole) async {
-                          if (nextRole == null || nextRole == role) return;
-                          setState(() => _savingId = id);
-                          await widget.onRoleChanged(id, nextRole);
-                          if (mounted) setState(() => _savingId = null);
-                        },
+      trailing: saving
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : DropdownButton<String>(
+              value: role,
+              underline: const SizedBox.shrink(),
+              items: const [
+                DropdownMenuItem(
+                  value: 'participant',
+                  child: Text('Participant'),
                 ),
+                DropdownMenuItem(
+                  value: 'organizer',
+                  child: Text('Organizer'),
+                ),
+                DropdownMenuItem(
+                  value: 'admin',
+                  child: Text('Administrator'),
+                ),
+              ],
+              onChanged: _savingId != null
+                  ? null
+                  : (nextRole) async {
+                      if (nextRole == null || nextRole == role) return;
+                      setState(() => _savingId = id);
+                      await widget.onRoleChanged(id, nextRole);
+                      if (mounted) setState(() => _savingId = null);
+                    },
+            ),
     );
   }
 }
