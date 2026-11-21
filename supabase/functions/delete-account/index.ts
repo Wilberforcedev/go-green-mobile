@@ -23,6 +23,16 @@ Deno.serve(async (request: Request) => {
   const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return jsonResponse(401, { error: "Sign in before deleting your account." });
 
+  let body: { confirmation?: string } | null = null;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse(400, { error: "Confirm account deletion and try again." });
+  }
+  if (body?.confirmation !== "DELETE") {
+    return jsonResponse(400, { error: "Account deletion was not confirmed." });
+  }
+
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) {
@@ -49,7 +59,7 @@ Deno.serve(async (request: Request) => {
 
   if (profile?.role === "admin") {
     return jsonResponse(409, {
-      error: "Change administrator access before deleting this account.",
+      error: "Remove administrator access before deleting this account.",
     });
   }
 
