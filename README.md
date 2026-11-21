@@ -74,7 +74,7 @@ supabase test db
 supabase stop
 ```
 
-New accounts default to the participant role. Role promotion remains an operator action; never grant roles from the mobile client. Organizers can cancel their own future activities, and participants can cancel future registrations; server-side functions enforce permissions and start-time limits. Account deletion and retention policy for organizer-owned activities and participation history still need to be defined before real users are onboarded.
+New accounts default to the participant role. A trusted operator must bootstrap the first administrator. After that, administrators can grant or remove organizer access from the Impact Hub’s Account access panel; the admin-only RPC records each change in an audit log. Organizers can edit or cancel their own future activities and cancel a participant’s future signup. Participants can cancel their own future registrations. Server-side functions enforce permissions, capacity and start-time limits. Account deletion and retention policy for organizer-owned activities and participation history still need to be defined before real users are onboarded.
 
 ## Production release
 
