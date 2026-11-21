@@ -677,6 +677,70 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmationController = TextEditingController();
+    final confirmation = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This permanently removes your profile, registrations, and Green Points. Published activities remain, with your organizer identity removed.',
+            ),
+            const SizedBox(height: 12),
+            const Text('Type DELETE to continue.'),
+            TextField(
+              controller: confirmationController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(labelText: 'Confirmation'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Keep account'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext)
+                .pop(confirmationController.text.trim()),
+            child: const Text('Delete permanently'),
+          ),
+        ],
+      ),
+    );
+    confirmationController.dispose();
+    if (confirmation != 'DELETE' || !mounted) return;
+
+    setState(() {
+      _working = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await _db.functions
+          .invoke(
+            'delete-account',
+            body: {'confirmation': 'DELETE'},
+          )
+          .timeout(_requestTimeout);
+      await _db.auth
+          .signOut(scope: SignOutScope.local)
+          .timeout(_requestTimeout);
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendly(e));
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
   Future<void> _join(String activityId) async {
     await _run(() async {
       await _db
@@ -1042,6 +1106,16 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           const Text(
             'Green Points record verified participation and have no cash value.',
             style: TextStyle(color: Colors.black54, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: _working ? null : _deleteAccount,
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: const Text('Delete my account and data'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+              side: BorderSide(color: Theme.of(context).colorScheme.error),
+            ),
           ),
         ],
       ),
