@@ -1,6 +1,6 @@
 begin;
 
-select plan(53);
+select plan(59);
 
 select has_function('public', 'cancel_activity_signup', array['uuid'], 'participant cancellation RPC exists');
 select has_function('public', 'cancel_activity', array['uuid'], 'organizer cancellation RPC exists');
@@ -384,6 +384,63 @@ select is(
   'both access changes are recorded in the audit log'
 );
 reset role;
+
+delete from public.profiles
+where id = '11111111-1111-4111-8111-111111111111';
+select is(
+  (select count(*)::integer from public.profiles
+   where id = '11111111-1111-4111-8111-111111111111'),
+  0,
+  'account deletion removes the participant profile'
+);
+select is(
+  (select count(*)::integer from public.activity_signups
+   where participant_id = '11111111-1111-4111-8111-111111111111'),
+  0,
+  'account deletion removes the participant registrations'
+);
+
+delete from public.profiles
+where id = '11111111-1111-4111-8111-111111111113';
+select is(
+  (select count(*)::integer from public.profiles
+   where id = '11111111-1111-4111-8111-111111111113'),
+  0,
+  'account deletion removes the organizer profile'
+);
+select is(
+  (select count(*)::integer from public.activities
+   where id in (
+     '22222222-2222-4222-8222-222222222221',
+     '22222222-2222-4222-8222-222222222222',
+     '22222222-2222-4222-8222-222222222223'
+   )),
+  3,
+  'account deletion retains published activity records'
+);
+select is(
+  (select count(*)::integer from public.activities
+   where organizer_id is null
+     and id in (
+       '22222222-2222-4222-8222-222222222221',
+       '22222222-2222-4222-8222-222222222222',
+       '22222222-2222-4222-8222-222222222223'
+     )),
+  3,
+  'retained activities no longer identify the deleted organizer'
+);
+select is(
+  (select count(*)::integer from public.activity_signups
+   where participant_id = '11111111-1111-4111-8111-111111111112'),
+  2,
+  'other participants retain their activity registrations'
+);
+select is(
+  (select count(*)::integer from public.point_ledger
+   where signup_id = '33333333-3333-4333-8333-333333333331'),
+  1,
+  'other participants retain verified points after organizer deletion'
+);
 
 select * from finish();
 rollback;
