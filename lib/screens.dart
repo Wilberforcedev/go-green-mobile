@@ -459,6 +459,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
   bool _working = false;
   List<Map<String, dynamic>> _activities = [];
   List<Map<String, dynamic>> _signups = [];
+  List<Map<String, dynamic>> _profiles = [];
   int _points = 0;
   String? _error;
   String? _notice;
@@ -487,6 +488,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           if (identityChanged) {
             _activities = [];
             _signups = [];
+            _profiles = [];
             _points = 0;
             _role = 'participant';
             _error = null;
@@ -532,6 +534,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         _loading = false;
         _activities = [];
         _signups = [];
+        _profiles = [];
         _points = 0;
         _role = 'participant';
       });
@@ -567,6 +570,11 @@ class ImpactHubPageState extends State<ImpactHubPage> {
             .eq('id', userId)
             .maybeSingle()
             .timeout(_requestTimeout),
+        _db
+            .from('profiles')
+            .select('id,display_name,role')
+            .order('display_name')
+            .timeout(_requestTimeout),
       ]);
       if (!mounted || requestId != _refreshRequestId || _user?.id != userId) {
         return;
@@ -581,6 +589,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         _role =
             ((results[3] as Map<String, dynamic>?)?['role'] as String?) ??
             'participant';
+        _profiles = List<Map<String, dynamic>>.from(results[4] as List);
         _loading = false;
       });
     } catch (e) {
@@ -720,6 +729,28 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           .timeout(_requestTimeout);
       _notice = 'Your registration has been cancelled.';
     });
+  }
+
+  Future<bool> _changeAccountRole(String profileId, String role) async {
+    try {
+      await _db
+          .rpc(
+            'set_profile_role',
+            params: {
+              'target_profile_uuid': profileId,
+              'new_role': role,
+            },
+          )
+          .timeout(_requestTimeout);
+      if (!mounted) return false;
+      await refresh();
+      if (!mounted) return false;
+      setState(() => _notice = 'Account access has been updated.');
+      return true;
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendly(e));
+      return false;
+    }
   }
 
   Future<void> _editActivity(Map<String, dynamic> activity) async {
@@ -885,7 +916,13 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           ],
           const SizedBox(height: 20),
           if (_role == 'organizer' || _role == 'admin')
-            _OrganizerTools(onPublished: refresh, userId: _user!.id),
+            if (_role == 'admin')
+            _AdminAccessTools(
+              profiles: _profiles,
+              onRoleChanged: _changeAccountRole,
+            ),
+          if (_role == 'admin') const SizedBox(height: 12),
+          _OrganizerTools(onPublished: refresh, userId: _user!.id),
           const _SectionTitle(
             'Community activities',
             'Published by organizers. Points are added after attendance is verified.',
