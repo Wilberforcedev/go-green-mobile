@@ -684,6 +684,127 @@ class _EditActivityDialogState extends State<_EditActivityDialog> {
   );
 }
 
+class _AdminAccessTools extends StatefulWidget {
+  const _AdminAccessTools({
+    required this.profiles,
+    required this.onRoleChanged,
+  });
+
+  final List<Map<String, dynamic>> profiles;
+  final Future<bool> Function(String profileId, String role) onRoleChanged;
+
+  @override
+  State<_AdminAccessTools> createState() => _AdminAccessToolsState();
+}
+
+class _AdminAccessToolsState extends State<_AdminAccessTools> {
+  final _search = TextEditingController();
+  String? _savingId;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _search.text.trim().toLowerCase();
+    final visible = widget.profiles.where((profile) {
+      final name = '${profile['display_name'] ?? 'Member'}'.toLowerCase();
+      return name.contains(query);
+    }).toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionTitle(
+              'Account access',
+              'Promote trusted participants to organizers or return access when needed. Changes are recorded for audit.',
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _search,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Find an account by name',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 6),
+            if (visible.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('No matching accounts.'),
+              ),
+            for (final profile in visible)
+              _accountRow(profile),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _accountRow(Map<String, dynamic> profile) {
+    final id = profile['id'] as String;
+    final role = profile['role'] as String? ?? 'participant';
+    final name = profile['display_name'] as String? ?? 'Member';
+    final saving = _savingId == id;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: const Color(0xFFEAF1E9),
+        child: Text(
+          name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+          style: const TextStyle(color: _darkGreen),
+        ),
+      ),
+      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        role == 'admin'
+            ? 'Administrator'
+            : role == 'organizer'
+                ? 'Organizer'
+                : 'Participant',
+      ),
+      trailing: role == 'admin'
+          ? const Text('Protected')
+          : saving
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : DropdownButton<String>(
+                  value: role,
+                  underline: const SizedBox.shrink(),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'participant',
+                      child: Text('Participant'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'organizer',
+                      child: Text('Organizer'),
+                    ),
+                  ],
+                  onChanged: _savingId != null
+                      ? null
+                      : (nextRole) async {
+                          if (nextRole == null || nextRole == role) return;
+                          setState(() => _savingId = id);
+                          await widget.onRoleChanged(id, nextRole);
+                          if (mounted) setState(() => _savingId = null);
+                        },
+                ),
+    );
+  }
+}
+
 class _StepperField extends StatelessWidget {
   const _StepperField({
     required this.label,
