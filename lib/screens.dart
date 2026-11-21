@@ -722,6 +722,34 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     });
   }
 
+  Future<void> _editActivity(Map<String, dynamic> activity) async {
+    final changes = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _EditActivityDialog(activity: activity),
+    );
+    if (changes == null || !mounted) return;
+    await _run(() async {
+      await _db
+          .rpc(
+            'update_activity',
+            params: {
+              'activity_uuid': activity['id'],
+              'new_title': changes['title'],
+              'new_category': changes['category'],
+              'new_place': changes['place'],
+              'new_starts_at': changes['starts_at'],
+              'new_capacity': changes['capacity'],
+              'new_points': changes['points'],
+              'new_description': changes['description'],
+              'new_impact_measure': changes['impact_measure'],
+              'new_impact_source_url': changes['impact_source_url'],
+            },
+          )
+          .timeout(_requestTimeout);
+      _notice = 'Activity details have been updated.';
+    });
+  }
+
   Future<void> _cancelActivity(String activityId) async {
     if (!await _confirmAction(
       'Cancel this activity?',
@@ -926,6 +954,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
               isOrganizerOwned:
                   _role == 'admin' || activity['organizer_id'] == _user!.id,
               onJoin: () => _join(activity['id'] as String),
+              onEdit: () => _editActivity(activity),
               onCancel: () => _cancelActivity(activity['id'] as String),
             ),
           const SizedBox(height: 14),
