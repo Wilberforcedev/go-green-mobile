@@ -1,9 +1,23 @@
 begin;
 
-select plan(40);
+select plan(50);
 
 select has_function('public', 'cancel_activity_signup', array['uuid'], 'participant cancellation RPC exists');
 select has_function('public', 'cancel_activity', array['uuid'], 'organizer cancellation RPC exists');
+select has_function(
+  'public',
+  'set_profile_role',
+  array['uuid', 'text'],
+  'account role management RPC exists'
+);
+select ok(
+  not has_function_privilege('anon', 'public.set_profile_role(uuid,text)', 'EXECUTE'),
+  'anonymous users cannot change account roles'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.set_profile_role(uuid,text)', 'EXECUTE'),
+  'authenticated users can call the admin-guarded role RPC'
+);
 select ok(not has_function_privilege('anon', 'public.cancel_activity_signup(uuid)', 'EXECUTE'), 'anonymous users cannot cancel registrations');
 select ok(not has_function_privilege('anon', 'public.cancel_activity(uuid)', 'EXECUTE'), 'anonymous users cannot cancel activities');
 select ok(has_function_privilege('authenticated', 'public.cancel_activity_signup(uuid)', 'EXECUTE'), 'authenticated users can call the guarded registration RPC');
@@ -212,6 +226,20 @@ select throws_ok(
   'You cannot cancel this activity.',
   'a participant cannot cancel an organizer activity'
 );
+select throws_ok(
+  $select public.set_profile_role(
+    '11111111-1111-4111-8111-111111111112',
+    'organizer'
+  )$,
+  '42501',
+  'Only administrators can manage account access.',
+  'participants cannot promote accounts'
+);
+select is(
+  (select count(*)::integer from public.admin_role_change_log),
+  0,
+  'participants cannot read role change audit records'
+);
 
 select set_config(
   'request.jwt.claims',
@@ -295,6 +323,49 @@ select is(
   1,
   'repeated verification creates only one points ledger row'
 );
+
+update public.profiles
+set role = 'admin'
+where id = '11111111-1111-4111-8111-111111111113';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111113","role":"authenticated"}',
+  true
+);
+select lives_ok(
+  $select public.set_profile_role(
+    '11111111-1111-4111-8111-111111111112',
+    'organizer'
+  )$,
+  'an administrator can promote a participant'
+);
+select is(
+  (select role from public.profiles
+   where id = '11111111-1111-4111-8111-111111111112'),
+  'organizer',
+  'the promoted account receives organizer access'
+);
+select lives_ok(
+  $select public.set_profile_role(
+    '11111111-1111-4111-8111-111111111112',
+    'participant'
+  )$,
+  'an administrator can remove organizer access'
+);
+select is(
+  (select role from public.profiles
+   where id = '11111111-1111-4111-8111-111111111112'),
+  'participant',
+  'the account returns to participant access'
+);
+select is(
+  (select count(*)::integer from public.admin_role_change_log),
+  2,
+  'both access changes are recorded in the audit log'
+);
+reset role;
 
 select * from finish();
 rollback;
