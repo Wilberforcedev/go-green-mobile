@@ -74,7 +74,7 @@ supabase test db
 supabase stop
 ```
 
-New accounts default to the participant role. A trusted operator must bootstrap the first administrator. After that, administrators can grant or remove organizer access from the Impact Hub’s Account access panel; the admin-only RPC records each change in an audit log. Organizers can edit or cancel their own future activities and cancel a participant’s future signup. Participants can cancel their own future registrations. Server-side functions enforce permissions, capacity and start-time limits. Account deletion and retention policy for organizer-owned activities and participation history still need to be defined before real users are onboarded.
+New accounts default to the participant role. A trusted operator must bootstrap the first administrator. After that, administrators can grant or remove organizer access from the Impact Hub’s Account access panel; the admin-only RPC records each change in an audit log. Organizers can edit or cancel their own future activities and cancel a participant’s future signup. Participants can cancel their own future registrations. Server-side functions enforce permissions, capacity and start-time limits. Account deletion follows the retention rule above: profiles, registrations, and points are removed; activities remain published with the organizer detached. The user-initiated `delete-account` Edge Function requires a valid session and protects the last administrator account. Deploy it with `supabase functions deploy delete-account` before offering account deletion in a live app. Never put the service-role key in the mobile app.
 
 ## Production release
 

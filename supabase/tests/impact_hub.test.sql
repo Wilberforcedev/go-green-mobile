@@ -1,6 +1,6 @@
 begin;
 
-select plan(59);
+select plan(63);
 
 select has_function('public', 'cancel_activity_signup', array['uuid'], 'participant cancellation RPC exists');
 select has_function('public', 'cancel_activity', array['uuid'], 'organizer cancellation RPC exists');
@@ -340,6 +340,35 @@ select is(
    where signup_id = '33333333-3333-4333-8333-333333333331'),
   1,
   'repeated verification creates only one points ledger row'
+);
+delete from auth.users where id = '11111111-1111-4111-8111-111111111112';
+select is(
+  (select count(*)::integer from public.activity_signups
+   where participant_id = '11111111-1111-4111-8111-111111111112'),
+  0,
+  'account deletion removes the participant registrations'
+);
+select is(
+  (select count(*)::integer from public.point_ledger
+   where participant_id = '11111111-1111-4111-8111-111111111112'),
+  0,
+  'account deletion removes the participant points history'
+);
+delete from auth.users where id = '11111111-1111-4111-8111-111111111113';
+select is(
+  (select count(*)::integer from public.activities
+   where id in (
+     '22222222-2222-4222-8222-222222222221',
+     '22222222-2222-4222-8222-222222222222'
+   ) and organizer_id is null),
+  2,
+  'organizer activities remain with identity detached after account deletion'
+);
+select is(
+  (select count(*)::integer from public.profiles
+   where id = '11111111-1111-4111-8111-111111111113'),
+  0,
+  'account deletion removes the organizer profile'
 );
 
 update public.profiles

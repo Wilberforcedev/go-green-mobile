@@ -644,6 +644,62 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account permanently?'),
+        content: const Text(
+          'Your profile, sign-ups, and Green Points will be deleted. '
+          'Activities you organized will remain published without your account attached. '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep account'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            child: const Text('Delete account'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _working = true;
+      _error = null;
+    });
+    try {
+      final response = await _db.functions
+          .invoke('delete-account')
+          .timeout(_requestTimeout);
+      if (response.status == 409) {
+        throw StateError(
+          'The last administrator account cannot be deleted. '
+          'Promote another administrator first.',
+        );
+      }
+      if (response.status < 200 || response.status >= 300) {
+        throw StateError('The server could not delete this account.');
+      }
+      await _db.auth.signOut().timeout(_requestTimeout);
+      _password.clear();
+    } catch (e) {
+      if (mounted) {
+        final message = e is StateError ? e.message : _friendly(e);
+        setState(() => _error = message);
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -958,6 +1014,12 @@ class ImpactHubPageState extends State<ImpactHubPage> {
                     fontSize: 34,
                     fontWeight: FontWeight.w900,
                   ),
+                ),
+                IconButton(
+                  onPressed: _working ? null : _deleteAccount,
+                  tooltip: 'Delete account',
+                  color: Colors.white,
+                  icon: const Icon(Icons.delete_forever_outlined),
                 ),
                 IconButton(
                   onPressed: _working ? null : _confirmSignOut,
