@@ -1,6 +1,6 @@
 begin;
 
-select plan(63);
+select plan(69);
 
 select has_function('public', 'cancel_activity_signup', array['uuid'], 'participant cancellation RPC exists');
 select has_function('public', 'cancel_activity', array['uuid'], 'organizer cancellation RPC exists');
@@ -411,6 +411,50 @@ select is(
   (select count(*)::integer from public.admin_role_change_log),
   2,
   'both access changes are recorded in the audit log'
+);
+select lives_ok(
+  $select public.set_profile_role(
+    '11111111-1111-4111-8111-111111111112',
+    'admin'
+  )$,
+  'an administrator can transfer administrator access'
+);
+select is(
+  (select role from public.profiles
+   where id = '11111111-1111-4111-8111-111111111112'),
+  'admin',
+  'the new administrator receives administrator access'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111112","role":"authenticated"}',
+  true
+);
+select lives_ok(
+  $select public.set_profile_role(
+    '11111111-1111-4111-8111-111111111113',
+    'participant'
+  )$,
+  'a transferred administrator can remove the former administrator access'
+);
+select throws_ok(
+  $select public.set_profile_role(
+    '11111111-1111-4111-8111-111111111112',
+    'participant'
+  )$,
+  '23514',
+  'At least one administrator must remain.',
+  'the last administrator cannot remove their own access'
+);
+select is(
+  (select count(*)::integer from public.profiles where role = 'admin'),
+  1,
+  'one administrator remains after a rejected last-admin change'
+);
+select is(
+  (select count(*)::integer from public.admin_role_change_log),
+  4,
+  'successful administrator transfers are audited and rejected changes are not'
 );
 reset role;
 
