@@ -65,7 +65,7 @@ check Android compilation. The artifact is not store-signed.
 
 ## Supabase backend
 
-Apply this repository's migrations to a dedicated Supabase project before connecting real users. For local checks, run:
+Apply this repository's migrations to a dedicated Supabase project before connecting real users. For local checks, run the database suite and the two-session capacity check. The concurrency script requires the PostgreSQL client (`psql`):
 
 ```sh
 supabase start
