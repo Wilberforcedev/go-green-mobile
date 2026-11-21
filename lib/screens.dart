@@ -644,72 +644,6 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     }
   }
 
-  Future<void> _deleteAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete account permanently?'),
-        content: const Text(
-          'Your profile, sign-ups, and Green Points will be deleted. '
-          'Activities you organized will remain with your account detached. '
-          'Security role-change records retain account IDs for audit. '
-          'This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep account'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            child: const Text('Delete account'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    setState(() {
-      _working = true;
-      _error = null;
-    });
-    try {
-      final response = await _db.functions
-          .invoke('delete-account')
-          .timeout(_requestTimeout);
-      if (response.status == 409) {
-        throw StateError(
-          'The last administrator account cannot be deleted. '
-          'Promote another administrator first.',
-        );
-      }
-      if (response.status < 200 || response.status >= 300) {
-        throw StateError('The server could not delete this account.');
-      }
-      await _db.auth
-          .signOut(scope: SignOutScope.local)
-          .timeout(_requestTimeout);
-      _password.clear();
-    } on FunctionException catch (e) {
-      if (mounted) {
-        final message = e.status == 409
-            ? 'The last administrator account cannot be deleted. Promote another administrator first.'
-            : 'The account could not be deleted. Please try again.';
-        setState(() => _error = message);
-      }
-    } catch (e) {
-      if (mounted) {
-        final message = e is StateError ? e.message : _friendly(e);
-        setState(() => _error = message);
-      }
-    } finally {
-      if (mounted) setState(() => _working = false);
-    }
-  }
-
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -754,7 +688,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'This permanently removes your profile, registrations, and Green Points. Published activities remain, with your organizer identity removed.',
+              'This permanently removes your profile, registrations, and Green Points. Published activities remain with your organizer identity detached. Role-change audit records keep account IDs.',
             ),
             const SizedBox(height: 12),
             const Text('Type DELETE to continue.'),
@@ -800,6 +734,13 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       await _db.auth
           .signOut(scope: SignOutScope.local)
           .timeout(_requestTimeout);
+    } on FunctionException catch (e) {
+      if (mounted) {
+        final message = e.status == 409
+            ? 'Remove administrator access in Account access before deleting this account.'
+            : 'The account could not be deleted. Please try again.';
+        setState(() => _error = message);
+      }
     } catch (e) {
       if (mounted) setState(() => _error = _friendly(e));
     } finally {
@@ -1026,12 +967,6 @@ class ImpactHubPageState extends State<ImpactHubPage> {
                   ),
                 ),
                 IconButton(
-                  onPressed: _working ? null : _deleteAccount,
-                  tooltip: 'Delete account',
-                  color: Colors.white,
-                  icon: const Icon(Icons.delete_forever_outlined),
-                ),
-                IconButton(
                   onPressed: _working ? null : _confirmSignOut,
                   tooltip: 'Sign out',
                   color: Colors.white,
@@ -1064,13 +999,13 @@ class ImpactHubPageState extends State<ImpactHubPage> {
               ),
           ],
           const SizedBox(height: 20),
-          if (_role == 'organizer' || _role == 'admin')
-            if (_role == 'admin')
+          if (_role == 'admin') ...[
             _AdminAccessTools(
               profiles: _profiles,
               onRoleChanged: _changeAccountRole,
             ),
-          if (_role == 'admin') const SizedBox(height: 12),
+            const SizedBox(height: 12),
+          ],
           _OrganizerTools(onPublished: refresh, userId: _user!.id),
           const _SectionTitle(
             'Community activities',
