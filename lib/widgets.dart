@@ -184,7 +184,6 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
   final _source = TextEditingController();
   String _category = 'Tree planting';
   DateTime? _starts;
-  String? _startError;
   int _capacity = 20;
   int _points = 50;
 
@@ -234,8 +233,7 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
         setState(() {
           _open = false;
           _starts = null;
-          _startError = null;
-        });
+            });
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Activity published')));
       }
@@ -558,8 +556,8 @@ class _EditActivityDialogState extends State<_EditActivityDialog> {
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Edit activity'),
-    content: SizedBox(
-      width: 480,
+    content: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 480),
       child: Form(
         key: _form,
         child: SingleChildScrollView(
@@ -645,14 +643,6 @@ class _EditActivityDialogState extends State<_EditActivityDialog> {
                   label: Text(_displayDateTime(context, _starts)),
                 ),
               ),
-              if (_startError != null)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _startError!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                ),
               Row(
                 children: [
                   Expanded(
