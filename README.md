@@ -71,6 +71,7 @@ Apply this repository's migrations to a dedicated Supabase project before connec
 supabase start
 supabase db reset
 supabase test db
+bash tool/check_join_capacity_concurrency.sh
 supabase stop
 ```
 
