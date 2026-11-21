@@ -71,10 +71,15 @@ jobs:
           version: latest
       - name: Start local Supabase
         run: supabase start
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends postgresql-client
       - name: Apply migrations and run database tests
         run: |
           supabase db reset
           supabase test db
+          bash tool/check_join_capacity_concurrency.sh
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
