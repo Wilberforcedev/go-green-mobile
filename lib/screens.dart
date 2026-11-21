@@ -753,6 +753,19 @@ class ImpactHubPageState extends State<ImpactHubPage> {
     }
   }
 
+  Future<void> _cancelManagedSignup(String signupId) async {
+    if (!await _confirmAction(
+      'Cancel this participant registration?',
+      'The participant will be removed from this activity.',
+    )) return;
+    await _run(() async {
+      await _db
+          .rpc('cancel_activity_signup', params: {'signup_uuid': signupId})
+          .timeout(_requestTimeout);
+      _notice = 'The participant registration has been cancelled.';
+    });
+  }
+
   Future<void> _editActivity(Map<String, dynamic> activity) async {
     final changes = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -1022,6 +1035,7 @@ class ImpactHubPageState extends State<ImpactHubPage> {
                 signup: signup,
                 busy: _working,
                 onVerify: () => _verify(signup['id'] as String),
+                onCancel: () => _cancelManagedSignup(signup['id'] as String),
               ),
           ],
           const SizedBox(height: 12),

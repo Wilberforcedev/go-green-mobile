@@ -1073,11 +1073,13 @@ class _CheckinCard extends StatelessWidget {
     required this.signup,
     required this.busy,
     required this.onVerify,
+    required this.onCancel,
   });
 
   final Map<String, dynamic> signup;
   final bool busy;
   final VoidCallback onVerify;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -1088,6 +1090,10 @@ class _CheckinCard extends StatelessWidget {
         DateTime.tryParse('${activity['starts_at'] ?? ''}')?.toLocal();
     final canVerify =
         startsAt != null && !startsAt.isAfter(DateTime.now());
+    final canCancel =
+        status == 'registered' &&
+        startsAt != null &&
+        startsAt.isAfter(DateTime.now());
 
     return Card(
       child: ListTile(
@@ -1105,7 +1111,13 @@ class _CheckinCard extends StatelessWidget {
                     tooltip: 'Confirm attendance',
                     icon: const Icon(Icons.verified_outlined, color: _green),
                   )
-                : Text(startsAt == null ? 'Date unavailable' : 'Available after start')
+                : canCancel
+                    ? IconButton(
+                        onPressed: busy ? null : onCancel,
+                        tooltip: 'Cancel participant registration',
+                        icon: const Icon(Icons.person_remove_outlined, color: Colors.black54),
+                      )
+                    : Text(startsAt == null ? 'Date unavailable' : 'Available after start')
             : Icon(
                 status == 'attended'
                     ? Icons.check_circle

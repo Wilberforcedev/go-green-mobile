@@ -1,6 +1,6 @@
 begin;
 
-select plan(50);
+select plan(53);
 
 select has_function('public', 'cancel_activity_signup', array['uuid'], 'participant cancellation RPC exists');
 select has_function('public', 'cancel_activity', array['uuid'], 'organizer cancellation RPC exists');
@@ -295,6 +295,14 @@ select is(
   'repeating verification returns the original award'
 );
 select lives_ok(
+  $q$select public.cancel_activity_signup(
+    (select id from public.activity_signups
+     where activity_id = '22222222-2222-4222-8222-222222222221'
+       and participant_id = '11111111-1111-4111-8111-111111111111')
+  )$q$,
+  'the activity owner can cancel a participant signup'
+);
+select lives_ok(
   $q$select public.cancel_activity('22222222-2222-4222-8222-222222222221')$q$,
   'the organizer can cancel their future activity'
 );
@@ -303,6 +311,16 @@ select is(
    where id = '22222222-2222-4222-8222-222222222221'),
   'cancelled',
   'organizer cancellation updates the activity status'
+);
+select throws_ok(
+  $q$select public.verify_attendance(
+    (select id from public.activity_signups
+     where activity_id = '22222222-2222-4222-8222-222222222221'
+       and participant_id = '11111111-1111-4111-8111-111111111111')
+  )$q$,
+  '22023',
+  'Attendance cannot be verified for a cancelled activity.',
+  'cancelled activities cannot award attendance points'
 );
 select set_config(
   'request.jwt.claims',
