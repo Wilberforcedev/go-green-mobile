@@ -48,16 +48,9 @@ Deno.serve(async (request: Request) => {
   }
 
   if (profile?.role === "admin") {
-    const { count, error: countError } = await admin
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "admin");
-    if (countError) {
-      return jsonResponse(500, { error: "Could not verify administrator coverage." });
-    }
-    if ((count ?? 0) <= 1) {
-      return jsonResponse(409, { error: "Transfer administrator access before deleting this account." });
-    }
+    return jsonResponse(409, {
+      error: "Change administrator access before deleting this account.",
+    });
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
