@@ -651,7 +651,8 @@ class ImpactHubPageState extends State<ImpactHubPage> {
         title: const Text('Delete account permanently?'),
         content: const Text(
           'Your profile, sign-ups, and Green Points will be deleted. '
-          'Activities you organized will remain published without your account attached. '
+          'Activities you organized will remain with your account detached. '
+          'Security role-change records retain account IDs for audit. '
           'This cannot be undone.',
         ),
         actions: [
@@ -688,8 +689,17 @@ class ImpactHubPageState extends State<ImpactHubPage> {
       if (response.status < 200 || response.status >= 300) {
         throw StateError('The server could not delete this account.');
       }
-      await _db.auth.signOut().timeout(_requestTimeout);
+      await _db.auth
+          .signOut(scope: SignOutScope.local)
+          .timeout(_requestTimeout);
       _password.clear();
+    } on FunctionException catch (e) {
+      if (mounted) {
+        final message = e.status == 409
+            ? 'The last administrator account cannot be deleted. Promote another administrator first.'
+            : 'The account could not be deleted. Please try again.';
+        setState(() => _error = message);
+      }
     } catch (e) {
       if (mounted) {
         final message = e is StateError ? e.message : _friendly(e);
