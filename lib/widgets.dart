@@ -184,6 +184,7 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
   final _source = TextEditingController();
   String _category = 'Tree planting';
   DateTime? _starts;
+  String? _startError;
   int _capacity = 20;
   int _points = 50;
 
@@ -233,6 +234,7 @@ class _OrganizerToolsState extends State<_OrganizerTools> {
         setState(() {
           _open = false;
           _starts = null;
+          _startError = null;
             });
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Activity published')));
@@ -475,7 +477,6 @@ class _EditActivityDialogState extends State<_EditActivityDialog> {
   late DateTime _starts;
   late int _capacity;
   late int _points;
-  String? _startError;
 
   @override
   void initState() {
@@ -533,7 +534,6 @@ class _EditActivityDialogState extends State<_EditActivityDialog> {
         time.hour,
         time.minute,
       );
-      _startError = null;
     });
   }
 
